@@ -1,0 +1,170 @@
+/* ============================================================
+   Design Tokens — 清新、简约、低饱和度、高级科技感
+   ============================================================ */
+
+:root {
+  /* —— 色彩：表面与背景 —— */
+  --bg-base: #F6F8FB;
+  --bg-soft: #F0F3F8;
+  --surface: #FFFFFF;
+  --surface-elevated: #FBFCFD;
+  --surface-overlay: rgba(255, 255, 255, 0.72);
+
+  /* —— 色彩：边界 —— */
+  --border-subtle: #EEF1F5;
+  --border: #E4E8EE;
+  --border-strong: #D5DBE5;
+
+  /* —— 色彩：文字 —— */
+  --text-primary: #1A2233;
+  --text-secondary: #5C6577;
+  --text-tertiary: #98A0AE;
+  --text-disabled: #C5CAD3;
+  --text-on-color: #FFFFFF;
+
+  /* —— 主色调（低饱和度青蓝） —— */
+  --brand: #7B9DDB;
+  --brand-hover: #6A8DCC;
+  --brand-active: #5A7DBB;
+  --brand-soft: #EEF3FB;
+  --brand-softer: #F6F9FD;
+  --brand-border: #D9E3F4;
+
+  /* —— 辅助色 —— */
+  --mint: #7DCBB3;
+  --mint-soft: #E8F6F0;
+  --lavender: #A89BD9;
+  --lavender-soft: #F0EDFA;
+  --peach: #F0B98A;
+  --peach-soft: #FCF1E6;
+  --coral: #E8908F;
+  --coral-soft: #FBEBEA;
+  --sun: #E8C97D;
+  --sun-soft: #FBF5E4;
+
+  /* —— 语义色 —— */
+  --success: #7DCBB3;
+  --success-soft: #E8F6F0;
+  --warning: #F0B98A;
+  --warning-soft: #FCF1E6;
+  --danger: #E8908F;
+  --danger-soft: #FBEBEA;
+  --info: #7B9DDB;
+  --info-soft: #EEF3FB;
+
+  /* —— 渐变 —— */
+  --gradient-brand: linear-gradient(135deg, #8FAEE6 0%, #B0C5EE 100%);
+  --gradient-mint: linear-gradient(135deg, #92D6BF 0%, #BCE7D8 100%);
+  --gradient-lavender: linear-gradient(135deg, #B6ABE2 0%, #D4CCEF 100%);
+  --gradient-peach: linear-gradient(135deg, #F4C9A2 0%, #F7DCC2 100%);
+  --gradient-aurora: linear-gradient(135deg, #EEF3FB 0%, #F0EDFA 50%, #E8F6F0 100%);
+  --gradient-sky: linear-gradient(180deg, #F4F7FC 0%, #FAFBFD 100%);
+
+  /* —— 间距 —— */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  /* —— 圆角 —— */
+  --radius-xs: 6px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-2xl: 28px;
+  --radius-full: 9999px;
+
+  /* —— 阴影（柔和、低强度） —— */
+  --shadow-xs: 0 1px 2px rgba(20, 30, 60, 0.04);
+  --shadow-sm: 0 2px 8px rgba(20, 30, 60, 0.04), 0 1px 2px rgba(20, 30, 60, 0.03);
+  --shadow-md: 0 4px 16px rgba(20, 30, 60, 0.06), 0 2px 4px rgba(20, 30, 60, 0.03);
+  --shadow-lg: 0 12px 32px rgba(20, 30, 60, 0.08), 0 4px 8px rgba(20, 30, 60, 0.04);
+  --shadow-xl: 0 24px 48px rgba(20, 30, 60, 0.10);
+  --shadow-inset: inset 0 1px 2px rgba(20, 30, 60, 0.04);
+
+  /* —— 字体 —— */
+  --font-sans: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei",
+    "Helvetica Neue", Helvetica, Arial, "Noto Sans SC", sans-serif;
+  --font-mono: "SF Mono", "JetBrains Mono", Menlo, Monaco, Consolas, monospace;
+
+  /* —— 字号 —— */
+  --text-xs: 11px;
+  --text-sm: 12px;
+  --text-base: 13px;
+  --text-md: 14px;
+  --text-lg: 16px;
+  --text-xl: 18px;
+  --text-2xl: 22px;
+  --text-3xl: 28px;
+  --text-4xl: 36px;
+  --text-display: 48px;
+
+  /* —— 行高 —— */
+  --leading-tight: 1.25;
+  --leading-snug: 1.4;
+  --leading-normal: 1.6;
+
+  /* —— 动效 —— */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --duration-fast: 150ms;
+  --duration-base: 220ms;
+  --duration-slow: 380ms;
+
+  /* —— 层级 —— */
+  --z-dropdown: 100;
+  --z-sticky: 200;
+  --z-overlay: 800;
+  --z-modal: 900;
+  --z-toast: 1000;
+
+  /* —— 布局 —— */
+  --layout-sidebar: 232px;
+  --layout-bottom-nav: 64px;
+  --layout-max-content: 1240px;
+}
+
+/* —— 暗色主题（轻量预留） —— */
+[data-theme="dark"] {
+  --bg-base: #14171D;
+  --bg-soft: #191D24;
+  --surface: #1E2229;
+  --surface-elevated: #232830;
+  --surface-overlay: rgba(30, 34, 41, 0.72);
+
+  --border-subtle: #262B33;
+  --border: #2F343D;
+  --border-strong: #3A404A;
+
+  --text-primary: #ECEEF2;
+  --text-secondary: #A0A7B4;
+  --text-tertiary: #6B727F;
+  --text-disabled: #4A4F58;
+
+  --brand-soft: #1F2A3D;
+  --brand-softer: #1A2230;
+  --brand-border: #2A395A;
+
+  --mint-soft: #1B2A26;
+  --lavender-soft: #25223A;
+  --peach-soft: #2D2418;
+  --coral-soft: #2D1D1D;
+  --sun-soft: #2C2718;
+
+  --success-soft: #1B2A26;
+  --warning-soft: #2D2418;
+  --danger-soft: #2D1D1D;
+  --info-soft: #1F2A3D;
+
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.24);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.28);
+  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.36);
+}
