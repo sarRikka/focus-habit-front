@@ -3,7 +3,7 @@
  */
 
 import { uid } from '../composables/utils';
-import { getTokens, setTokens, isRemote } from './http';
+import { getTokens, setTokens, isRemote, ApiError } from './http';
 import {
   authApi, userApi, settingsApi, goalApi, reviewApi, sceneApi,
 } from './index';
@@ -28,7 +28,8 @@ function getOrCreateDeviceId(): string {
  * 可设置 VITE_ENABLE_GUEST=0 关闭
  */
 export async function ensureAuth(): Promise<void> {
-  if (getTokens()?.access_token) return;
+  const tokens = getTokens();
+  if (tokens?.access_token) return;
   if (import.meta.env.VITE_ENABLE_GUEST === '0') {
     return;
   }
@@ -98,13 +99,26 @@ export async function pullRemoteSnapshot(): Promise<RemoteSnapshot> {
     defaultProgressDeduction: 1,
   };
 
-  const results = await Promise.allSettled([
+  const fetchAll = () => Promise.allSettled([
     userApi.me(),
     settingsApi.get(),
     goalApi.list({ status: 'all', page_size: 200 }),
     reviewApi.list({ type: 'all', page_size: 200 }),
     sceneApi.list(),
   ]);
+  let results = await fetchAll();
+
+  // 若所有请求都因 401 失败，说明本地 token 可能已失效；清除后重走游客鉴权再重试一次。
+  const allUnauthorized = results.every((r) => (
+    r.status === 'rejected'
+    && r.reason instanceof ApiError
+    && r.reason.status === 401
+  ));
+  if (allUnauthorized) {
+    setTokens(null);
+    await ensureAuth();
+    results = await fetchAll();
+  }
 
   let profile: UserProfile = { ...emptyProfile };
   if (results[0].status === 'fulfilled') {
