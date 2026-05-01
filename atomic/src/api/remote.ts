@@ -41,7 +41,7 @@ export async function ensureAuth(): Promise<void> {
       expires_at: Date.now() + (r.expires_in ?? 7200) * 1000,
     });
   } catch {
-    // 无游客接口时由调用方在拉数据失败后再提示
+    // 无游客接口时由调用方给出明确提示，避免进入“部分成功”的不确定状态
   }
 }
 
@@ -79,6 +79,10 @@ export async function pullRemoteSnapshot(): Promise<RemoteSnapshot> {
   }
 
   await ensureAuth();
+  const authed = getTokens()?.access_token;
+  if (!authed) {
+    throw new Error('鉴权失败：后端未提供游客登录或当前会话无效，请先登录后重试');
+  }
 
   const emptyProfile: UserProfile = {
     nickname: '用户',
@@ -164,6 +168,10 @@ export async function pullRemoteSnapshot(): Promise<RemoteSnapshot> {
 /** 单目标详情（列表不含打卡明细时补拉） */
 export async function pullGoalDetail(goalId: string): Promise<Goal> {
   await ensureAuth();
+  const authed = getTokens()?.access_token;
+  if (!authed) {
+    throw new Error('鉴权失败：后端未提供游客登录或当前会话无效，请先登录后重试');
+  }
   const raw = await goalApi.detail(goalId);
   return mapGoalFromApi(raw);
 }

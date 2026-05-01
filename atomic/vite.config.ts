@@ -6,6 +6,7 @@ import { fileURLToPath, URL } from 'node:url';
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
   const apiTarget = env.VITE_API_TARGET || 'http://localhost:8081';
+  const allowedHosts = ['haieoyutqixf.sealoshzh.site', 'ztvqhxumrnrn.sealoshzh.site'];
 
   return {
     plugins: [vue()],
@@ -17,6 +18,7 @@ export default defineConfig(({ mode }) => {
     server: {
       port: 5173,
       host: true,
+      allowedHosts,
       // 把 /api 与 /uploads 转发到后端，避免浏览器同源策略限制
       proxy: {
         '/api': {
@@ -30,6 +32,11 @@ export default defineConfig(({ mode }) => {
           changeOrigin: true,
         },
       },
+    },
+    preview: {
+      host: true,
+      port: 3000,
+      allowedHosts,
     },
   };
 });
