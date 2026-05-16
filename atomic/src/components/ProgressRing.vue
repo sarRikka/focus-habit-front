@@ -23,10 +23,10 @@ const gradientId = computed(() => `pr-grad-${Math.random().toString(36).slice(2,
 
 const stops = computed(() => {
   const map = {
-    brand: ['#8FAEE6', '#A89BD9'],
-    mint: ['#92D6BF', '#7DCBB3'],
-    lavender: ['#B6ABE2', '#A89BD9'],
-    peach: ['#F4C9A2', '#F0B98A'],
+    brand: ['var(--pr-brand-0)', 'var(--pr-brand-1)'],
+    mint: ['var(--pr-mint-0)', 'var(--pr-mint-1)'],
+    lavender: ['var(--pr-lavender-0)', 'var(--pr-lavender-1)'],
+    peach: ['var(--pr-peach-0)', 'var(--pr-peach-1)'],
   };
   return map[props.color];
 });

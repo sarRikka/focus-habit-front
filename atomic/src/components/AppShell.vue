@@ -13,6 +13,8 @@ const route = useRoute();
 const router = useRouter();
 const store = useAppStore();
 
+const hideChrome = computed(() => route.path === '/login' || route.path === '/register');
+
 const navItems = [
   { name: 'dashboard', label: '今日', icon: LayoutDashboard, path: '/' },
   { name: 'goals', label: '目标', icon: Target, path: '/goals' },
@@ -31,7 +33,12 @@ const pageTitle = computed(() => (route.meta.title as string) ?? 'Atomic');
 </script>
 
 <template>
-  <div v-if="!isRemote || store.remoteReady" class="shell">
+  <div v-if="!isRemote || store.remoteReady">
+    <template v-if="hideChrome">
+      <RouterView />
+      <ToastContainer />
+    </template>
+    <div v-else class="shell">
     <!-- 桌面端侧边导航 -->
     <aside class="shell__sidebar hide-mobile">
       <div class="brand">
@@ -111,11 +118,20 @@ const pageTitle = computed(() => (route.meta.title as string) ?? 'Atomic');
 
     <ToastContainer />
   </div>
+  </div>
   <div v-else class="app-loading">
     <div class="app-loading__inner">
       <div class="app-loading__spinner"></div>
       <p>正在连接服务…</p>
       <p v-if="store.remoteError" class="app-loading__err">{{ store.remoteError }}</p>
+      <button
+        v-if="isRemote && store.remoteError"
+        type="button"
+        class="btn btn--primary app-loading__retry"
+        @click="router.push('/login')"
+      >
+        尝试登录
+      </button>
     </div>
   </div>
 </template>
@@ -152,7 +168,7 @@ const pageTitle = computed(() => (route.meta.title as string) ?? 'Atomic');
   height: 34px;
   border-radius: var(--radius-md);
   background: var(--gradient-brand);
-  color: #fff;
+  color: var(--text-on-color);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -217,7 +233,7 @@ const pageTitle = computed(() => (route.meta.title as string) ?? 'Atomic');
   font-size: var(--text-3xl);
   font-weight: 700;
   letter-spacing: -0.5px;
-  background: linear-gradient(135deg, #6A8DCC 0%, #A89BD9 100%);
+  background: var(--gradient-streak);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -323,6 +339,9 @@ const pageTitle = computed(() => (route.meta.title as string) ?? 'Atomic');
   color: var(--coral);
   font-size: var(--text-sm);
   margin-top: var(--space-2);
+}
+.app-loading__retry {
+  margin-top: var(--space-4);
 }
 @keyframes spin {
   to { transform: rotate(360deg); }

@@ -137,15 +137,15 @@ const weekdays = ['日', '一', '二', '三', '四', '五', '六'];
 
 .cal__cell--done {
   background: var(--mint-soft);
-  color: #4DA88B;
+  color: var(--accent-mint);
 }
 .cal__cell--late {
   background: var(--peach-soft);
-  color: #C68A52;
+  color: var(--accent-peach);
 }
 .cal__cell--missed {
   background: var(--coral-soft);
-  color: #C76C6B;
+  color: var(--accent-coral);
 }
 .cal__cell--missed-soft {
   background: var(--bg-soft);
@@ -154,7 +154,7 @@ const weekdays = ['日', '一', '二', '三', '四', '五', '六'];
 }
 .cal__cell--paused {
   background: var(--lavender-soft);
-  color: #7665B8;
+  color: var(--accent-lavender);
 }
 .cal__cell--today {
   box-shadow: 0 0 0 2px var(--brand);
@@ -181,8 +181,8 @@ const weekdays = ['日', '一', '二', '三', '四', '五', '六'];
   height: 8px;
   border-radius: var(--radius-full);
 }
-.dot--done { background: #92D6BF; }
-.dot--late { background: #F0B98A; }
-.dot--missed { background: #E8908F; }
-.dot--paused { background: #B6ABE2; }
+.dot--done { background: var(--mint); }
+.dot--late { background: var(--warning); }
+.dot--missed { background: var(--danger); }
+.dot--paused { background: var(--lavender); }
 </style>

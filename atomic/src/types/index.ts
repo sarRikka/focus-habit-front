@@ -27,9 +27,12 @@ export interface CheckinRecord {
 
 export interface DailyHabit {
   description: string;     // 每日具体事项
-  duration: number;        // 单位：分钟
-  autoLevelUp: boolean;    // 是否自动进阶
-  levelUpStep: number;     // 进阶幅度（分钟）
+  duration: number;       // 单位：分钟
+  /** @deprecated 产品已下线自动进阶，新目标固定为 false，仅兼容旧数据 */
+  autoLevelUp: boolean;
+  levelUpStep: number;      // 分钟（仅兼容旧自动进阶）
+  /** 每周计划打卡天数（1–7），默认 7（每天） */
+  daysPerWeek: number;
 }
 
 export interface PhaseTask {
@@ -58,7 +61,7 @@ export interface Goal {
   category: GoalCategory;
   customCategoryName?: string;
   finalGoal: string;       // 最终目标
-  coreNeed: string;        // 核心诉求 — 习惯固化判定标准
+  coreNeed: string;        // 核心诉求 — 可选，习惯固化判定标准
   deadline: string;        // YYYY-MM-DD
   createdAt: string;
   totalDescription: string; // 总事项
@@ -108,6 +111,10 @@ export interface ReviewReport {
 }
 
 export interface UserProfile {
+  /** 服务端用户 ID（远程模式登录 / 游客鉴权后由 /me 返回） */
+  userId?: string;
+  /** 是否为游客会话（账号登录后为 false） */
+  isGuest?: boolean;
   nickname: string;
   avatar?: string;
   joinedAt: string;
@@ -125,7 +132,7 @@ export interface AppSettings {
   theme: 'light' | 'dark';
   dataRetention: '1y' | '3y' | '5y' | 'forever';
   customEncouragements: string[];
-  defaultProgressDeduction: number; // 1-2
+  defaultProgressDeduction: number; // 0–10，未打卡扣进度默认比例
 }
 
 export interface ToastMessage {

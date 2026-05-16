@@ -42,17 +42,17 @@ npm run preview  # 预览生产包
 
 ## 与后端联调
 
-后端默认监听 `http://localhost:8081`。Vite dev server 已配置代理，浏览器访问的 `/api/*` 请求会自动转发到后端，无需处理跨域。
+后端本地联调默认监听 **`http://127.0.0.1:8080`**（与 `.env.development` 中 `VITE_API_TARGET` 一致）。Vite dev server 已配置代理，浏览器访问的 `/api/*` 请求会自动转发到该目标，无需处理跨域。
 
 环境变量（位于 `.env.development`）：
 
 ```bash
 VITE_API_BASE_URL=/api/v1            # 浏览器侧使用的相对前缀（走代理）
-VITE_API_TARGET=http://localhost:8081 # 代理转发目标
-VITE_DATA_SOURCE=mock                # mock = 走本地 seed；remote = 走后端
+VITE_API_TARGET=http://127.0.0.1:8080 # 代理转发目标（按需改端口）
+VITE_DATA_SOURCE=remote               # mock = 本地 seed；remote = 走后端（联调时请用 remote）
 ```
 
-切换数据源：把 `VITE_DATA_SOURCE` 改为 `remote` 后重启 `npm run dev`，store 即可调用 `src/api` 中的封装。
+切换数据源：把 `VITE_DATA_SOURCE` 改为 `remote` 后**重启** `npm run dev`，store 才会调用 `src/api` 中的封装。
 
 API 调用示例：
 
@@ -65,6 +65,15 @@ if (isRemote) {
 ```
 
 完整接口契约见 [`docs/API.md`](./docs/API.md)。
+
+## 测试
+
+```bash
+npm run test          # Vitest 单测
+npm run test:all      # vue-tsc + vitest + build（推荐 CI）
+```
+
+- **创建目标链路（规则与组装）**：[`docs/goal-create-flow.md`](./docs/goal-create-flow.md) · 实现见 `src/composables/goalCreateFlow.ts`，单测 `src/composables/goalCreateFlow.test.ts`。
 
 ## 目录结构
 

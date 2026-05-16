@@ -74,10 +74,11 @@ export function seedGoals(): Goal[] {
         },
       ],
       dailyHabit: {
-        description: '每天晚上 7 点，学习 Python 基础语法 10 分钟，完成 1 道练习题',
-        duration: 10,
-        autoLevelUp: true,
-        levelUpStep: 2,
+        description: '每天晚上 7 点，学习 Python 基础语法 30 分钟，完成 1 道练习题',
+        duration: 30,
+        autoLevelUp: false,
+        levelUpStep: 1,
+        daysPerWeek: 7,
       },
       checkins: buildCheckins(30, 2, 2),
       rewards: [
@@ -132,9 +133,10 @@ export function seedGoals(): Goal[] {
       ],
       dailyHabit: {
         description: '6:40 前起床，开窗呼吸 3 分钟，喝一杯温水',
-        duration: 5,
+        duration: 30,
         autoLevelUp: false,
         levelUpStep: 1,
+        daysPerWeek: 7,
       },
       checkins: buildCheckins(15, 1, 1),
       rewards: [
@@ -187,10 +189,11 @@ export function seedGoals(): Goal[] {
         },
       ],
       dailyHabit: {
-        description: '睡前 10 分钟轻阅读，记录一句触动你的话',
-        duration: 10,
-        autoLevelUp: true,
+        description: '睡前 30 分钟轻阅读，记录一句触动你的话',
+        duration: 30,
+        autoLevelUp: false,
         levelUpStep: 1,
+        daysPerWeek: 5,
       },
       checkins: buildCheckins(10, 0, 1),
       rewards: [

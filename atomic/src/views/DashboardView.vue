@@ -351,9 +351,9 @@ function goCheckin(goalId: string) {
   flex-shrink: 0;
 }
 .stat__icon--brand { background: var(--brand-soft); color: var(--brand-active); }
-.stat__icon--mint { background: var(--mint-soft); color: #4DA88B; }
-.stat__icon--peach { background: var(--peach-soft); color: #C68A52; }
-.stat__icon--lavender { background: var(--lavender-soft); color: #7665B8; }
+.stat__icon--mint { background: var(--mint-soft); color: var(--accent-mint); }
+.stat__icon--peach { background: var(--peach-soft); color: var(--accent-peach); }
+.stat__icon--lavender { background: var(--lavender-soft); color: var(--accent-lavender); }
 .stat__num {
   font-size: var(--text-lg);
   font-weight: 700;
@@ -476,7 +476,7 @@ function goCheckin(goalId: string) {
   transition: height var(--duration-slow) var(--ease-out);
 }
 .weekly__bar--today {
-  background: linear-gradient(180deg, #B6ABE2 0%, #8FAEE6 100%);
+  background: var(--gradient-weekly-today);
 }
 .weekly__label {
   font-size: var(--text-xs);
@@ -522,9 +522,9 @@ function goCheckin(goalId: string) {
   color: var(--brand-active);
 }
 .reward-item__icon--brand { background: var(--brand-soft); color: var(--brand-active); }
-.reward-item__icon--mint { background: var(--mint-soft); color: #4DA88B; }
-.reward-item__icon--lavender { background: var(--lavender-soft); color: #7665B8; }
-.reward-item__icon--peach { background: var(--peach-soft); color: #C68A52; }
+.reward-item__icon--mint { background: var(--mint-soft); color: var(--accent-mint); }
+.reward-item__icon--lavender { background: var(--lavender-soft); color: var(--accent-lavender); }
+.reward-item__icon--peach { background: var(--peach-soft); color: var(--accent-peach); }
 .reward-item__main { flex: 1; min-width: 0; }
 .reward-item__name {
   font-size: var(--text-md);

@@ -3,14 +3,25 @@ import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import {
   Edit3, Sparkles, Award, Flame, Calendar, Settings as SettingsIcon,
-  Target as TargetIcon, Gift, Archive,
+  Target as TargetIcon, Gift, Archive, Smartphone, LogOut, UserPlus,
 } from 'lucide-vue-next';
 import { useAppStore } from '../stores/app';
+import { isRemote } from '../api/http';
 import Modal from '../components/Modal.vue';
 import { formatDate } from '../composables/utils';
 
 const router = useRouter();
 const store = useAppStore();
+const loggingOut = ref(false);
+
+async function onLogout() {
+  loggingOut.value = true;
+  try {
+    await store.logoutAccount();
+  } finally {
+    loggingOut.value = false;
+  }
+}
 
 const showEdit = ref(false);
 const editingNickname = ref(store.profile.nickname);
@@ -61,6 +72,52 @@ const achievements = computed(() => [
         </div>
         <button class="btn btn--outline" @click="router.push('/settings')">
           <SettingsIcon :size="14" :stroke-width="2" /> 设置
+        </button>
+      </div>
+    </section>
+
+    <!-- 账号（remote 可走服务端登录；mock 仅本地数据） -->
+    <section class="card card--padded account">
+      <div class="section-title">
+        <div class="section-title__main">
+          <h3><Smartphone :size="14" :stroke-width="2" style="vertical-align:-2px;margin-right:4px" /> 账号</h3>
+          <span class="section-title__sub">
+            <template v-if="!isRemote">本地演示 · 未连接后端</template>
+            <template v-else-if="store.profile.isGuest === true">游客模式 · 建议使用账号登录</template>
+            <template v-else-if="store.profile.isGuest === false">已登录</template>
+            <template v-else>同步后即可查看登录状态</template>
+          </span>
+        </div>
+      </div>
+      <p v-if="!isRemote" class="account__mock-hint">
+        当前为本地数据模式。要使用账号登录，请在 <span class="mono">atomic/.env.development</span> 中将
+        <span class="mono">VITE_DATA_SOURCE</span> 设为 <span class="mono">remote</span>，保存后<strong>重启</strong>前端开发服务（例如重新执行 <span class="mono">npm run dev</span>）。
+      </p>
+      <div v-else class="account__actions">
+        <template v-if="store.profile.isGuest !== false">
+          <button
+            type="button"
+            class="btn btn--primary"
+            @click="router.push('/login')"
+          >
+            <Smartphone :size="14" :stroke-width="2" /> 登录
+          </button>
+          <button
+            type="button"
+            class="btn btn--outline"
+            @click="router.push('/register')"
+          >
+            <UserPlus :size="14" :stroke-width="2" /> 注册
+          </button>
+        </template>
+        <button
+          v-else
+          type="button"
+          class="btn btn--outline"
+          :disabled="loggingOut"
+          @click="onLogout"
+        >
+          <LogOut :size="14" :stroke-width="2" /> {{ loggingOut ? '退出中…' : '退出登录' }}
         </button>
       </div>
     </section>
@@ -175,7 +232,7 @@ const achievements = computed(() => [
   height: 78px;
   border-radius: var(--radius-full);
   background: var(--gradient-brand);
-  color: #fff;
+  color: var(--text-on-color);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -228,9 +285,9 @@ const achievements = computed(() => [
   flex-shrink: 0;
 }
 .stat-card__icon--brand { background: var(--brand-soft); color: var(--brand-active); }
-.stat-card__icon--mint { background: var(--mint-soft); color: #4DA88B; }
-.stat-card__icon--lavender { background: var(--lavender-soft); color: #7665B8; }
-.stat-card__icon--peach { background: var(--peach-soft); color: #C68A52; }
+.stat-card__icon--mint { background: var(--mint-soft); color: var(--accent-mint); }
+.stat-card__icon--lavender { background: var(--lavender-soft); color: var(--accent-lavender); }
+.stat-card__icon--peach { background: var(--peach-soft); color: var(--accent-peach); }
 .stat-card__num {
   font-size: var(--text-2xl);
   font-weight: 700;
@@ -332,6 +389,23 @@ const achievements = computed(() => [
 
 .link { font-size: var(--text-sm); color: var(--brand-active); }
 .link:hover { color: var(--brand-hover); }
+
+.account__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.account__mock-hint {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+.account__mock-hint .mono {
+  font-family: ui-monospace, monospace;
+  font-size: 0.92em;
+  color: var(--text-primary);
+}
 
 .form__field { margin-bottom: var(--space-4); }
 .form__label {

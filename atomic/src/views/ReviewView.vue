@@ -99,15 +99,15 @@ function typeLabel(t: ReviewReport['type']) {
           <svg :viewBox="`0 0 ${trendWidth} 120`" preserveAspectRatio="none">
             <defs>
               <linearGradient id="trend-grad" x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%" stop-color="#8FAEE6" stop-opacity="0.34" />
-                <stop offset="100%" stop-color="#8FAEE6" stop-opacity="0" />
+                <stop offset="0%" stop-color="var(--chart-brand)" stop-opacity="0.34" />
+                <stop offset="100%" stop-color="var(--chart-brand)" stop-opacity="0" />
               </linearGradient>
             </defs>
             <path :d="trendArea" fill="url(#trend-grad)" />
             <polyline
               :points="trendPoints"
               fill="none"
-              stroke="#8FAEE6"
+              stroke="var(--chart-brand)"
               stroke-width="2.4"
               stroke-linecap="round"
               stroke-linejoin="round"
@@ -118,8 +118,8 @@ function typeLabel(t: ReviewReport['type']) {
               :cx="i * 60"
               :cy="120 - r.metrics!.checkinRate * 1.05"
               r="3.6"
-              fill="#fff"
-              stroke="#7B9DDB"
+              fill="var(--surface)"
+              stroke="var(--chart-brand-mid)"
               stroke-width="2"
             />
           </svg>
@@ -164,7 +164,7 @@ function typeLabel(t: ReviewReport['type']) {
           </div>
           <div class="review-card__actions">
             <button class="btn btn--ghost btn--icon btn--sm" :class="{ 'is-active': r.isFavorite }" @click="store.toggleReviewFavorite(r.id)">
-              <Star :size="14" :stroke-width="2" :fill="r.isFavorite ? '#E8C97D' : 'none'" />
+              <Star :size="14" :stroke-width="2" :fill="r.isFavorite ? 'var(--sun)' : 'none'" />
             </button>
             <button class="btn btn--ghost btn--icon btn--sm" @click="store.deleteReview(r.id)">
               <Trash2 :size="14" :stroke-width="2" />

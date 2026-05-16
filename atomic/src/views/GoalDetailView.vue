@@ -7,7 +7,7 @@ import {
 } from 'lucide-vue-next';
 import { useAppStore } from '../stores/app';
 import { isRemote } from '../api/http';
-import { dateKey, diffDays, formatDate, formatMinutes, todayStr } from '../composables/utils';
+import { dateKey, diffDays, formatDate, formatMinutes, todayStr, weeklyCheckinDayChoices } from '../composables/utils';
 import ProgressRing from '../components/ProgressRing.vue';
 import ProgressBar from '../components/ProgressBar.vue';
 import CheckinCalendar from '../components/CheckinCalendar.vue';
@@ -61,7 +61,8 @@ const editForm = reactive({
   coreNeed: '',
   deadline: '',
   dailyDescription: '',
-  dailyDuration: 10,
+  dailyDuration: 30,
+  daysPerWeek: 7,
 });
 
 watch(() => goal.value?.id, () => {
@@ -73,6 +74,7 @@ watch(() => goal.value?.id, () => {
   editForm.deadline = g.deadline;
   editForm.dailyDescription = g.dailyHabit.description;
   editForm.dailyDuration = g.dailyHabit.duration;
+  editForm.daysPerWeek = g.dailyHabit.daysPerWeek ?? 7;
 }, { immediate: true });
 
 onMounted(() => {
@@ -96,12 +98,13 @@ function openEdit() {
   editForm.deadline = goal.value.deadline;
   editForm.dailyDescription = goal.value.dailyHabit.description;
   editForm.dailyDuration = goal.value.dailyHabit.duration;
+  editForm.daysPerWeek = goal.value.dailyHabit.daysPerWeek ?? 7;
   showEdit.value = true;
 }
 
 async function saveEdit() {
   if (!goal.value) return;
-  if (!editForm.name.trim() || !editForm.finalGoal.trim() || !editForm.coreNeed.trim()) return;
+  if (!editForm.name.trim() || !editForm.finalGoal.trim()) return;
   const gid = goal.value.id;
   try {
     await store.updateGoal(gid, {
@@ -113,6 +116,7 @@ async function saveEdit() {
         ...goal.value.dailyHabit,
         description: editForm.dailyDescription.trim(),
         duration: Math.max(1, editForm.dailyDuration),
+        daysPerWeek: Math.max(1, Math.min(7, Math.round(editForm.daysPerWeek))),
       },
     });
     if (!isRemote) store.recomputeProgress(gid);
@@ -206,6 +210,7 @@ function rewardLabel(r: RewardStage): string {
           <div class="hero__meta">
             <div><Calendar :size="13" :stroke-width="2" /> 截止 {{ formatDate(goal.deadline, 'CN') }}</div>
             <div><Clock3 :size="13" :stroke-width="2" /> 每日 {{ goal.dailyHabit.duration }} 分钟</div>
+            <div v-if="(goal.dailyHabit.daysPerWeek ?? 7) < 7"><Sparkles :size="13" :stroke-width="2" /> 每周 {{ goal.dailyHabit.daysPerWeek ?? 7 }} 天</div>
             <div v-if="continuousDays > 0"><Flame :size="13" :stroke-width="2" /> 连续 {{ continuousDays }} 天</div>
           </div>
         </div>
@@ -214,7 +219,7 @@ function rewardLabel(r: RewardStage): string {
         </div>
       </div>
 
-      <div class="hero__core">
+      <div v-if="goal.coreNeed.trim()" class="hero__core">
         <div class="hero__core-label">核心诉求 · 习惯固化判定标准</div>
         <p class="hero__core-text">{{ goal.coreNeed }}</p>
       </div>
@@ -289,7 +294,7 @@ function rewardLabel(r: RewardStage): string {
               <div class="tree-node__head">
                 <span class="tree-node__title">每日习惯</span>
                 <span class="tag tag--lavender">{{ goal.dailyHabit.duration }} 分钟</span>
-                <span v-if="goal.dailyHabit.autoLevelUp" class="tag tag--peach">自动进阶 +{{ goal.dailyHabit.levelUpStep }}</span>
+                <span v-if="(goal.dailyHabit.daysPerWeek ?? 7) < 7" class="tag tag--peach">每周 {{ goal.dailyHabit.daysPerWeek ?? 7 }} 天</span>
               </div>
               <p class="tree-node__desc">{{ goal.dailyHabit.description }}</p>
             </div>
@@ -413,8 +418,8 @@ function rewardLabel(r: RewardStage): string {
         <input v-model="editForm.finalGoal" class="input" />
       </div>
       <div class="form__field">
-        <label class="form__label">核心诉求 / 习惯固化判定标准</label>
-        <textarea v-model="editForm.coreNeed" class="textarea" rows="2"></textarea>
+        <label class="form__label">核心诉求（可选）</label>
+        <textarea v-model="editForm.coreNeed" class="textarea" rows="2" placeholder="可留空"></textarea>
       </div>
       <div class="form__field">
         <label class="form__label">截止日期</label>
@@ -427,6 +432,23 @@ function rewardLabel(r: RewardStage): string {
       <div class="form__field">
         <label class="form__label">每日时长（分钟）</label>
         <input v-model.number="editForm.dailyDuration" type="number" min="1" class="input" />
+      </div>
+      <div class="form__field">
+        <label class="form__label">每周打卡天数</label>
+        <div class="weekly-days" role="radiogroup" aria-label="每周计划打卡天数">
+          <button
+            v-for="opt in weeklyCheckinDayChoices"
+            :key="opt.value"
+            type="button"
+            role="radio"
+            :aria-checked="editForm.daysPerWeek === opt.value"
+            class="weekly-days__btn"
+            :class="{ 'weekly-days__btn--active': editForm.daysPerWeek === opt.value }"
+            @click="editForm.daysPerWeek = opt.value"
+          >
+            {{ opt.label }}
+          </button>
+        </div>
       </div>
       <template #footer>
         <button class="btn btn--ghost" @click="showEdit = false">取消</button>
@@ -636,8 +658,8 @@ function rewardLabel(r: RewardStage): string {
   z-index: 1;
 }
 .tree-node__bullet--total { background: var(--brand-soft); color: var(--brand-active); }
-.tree-node__bullet--done { background: var(--mint); color: #fff; }
-.tree-node__bullet--daily { background: var(--lavender-soft); color: #7665B8; }
+.tree-node__bullet--done { background: var(--mint); color: var(--text-on-color); }
+.tree-node__bullet--daily { background: var(--lavender-soft); color: var(--accent-lavender); }
 
 .tree-node__body { flex: 1; min-width: 0; padding-top: 2px; }
 .tree-node__head {
@@ -712,7 +734,7 @@ function rewardLabel(r: RewardStage): string {
   align-items: center;
   justify-content: center;
 }
-.reward-card--available .reward-card__icon { background: var(--mint); color: #fff; }
+.reward-card--available .reward-card__icon { background: var(--mint); color: var(--text-on-color); }
 .reward-card--claimed .reward-card__icon { background: var(--peach-soft); color: var(--peach); }
 .reward-card__name {
   flex: 1;

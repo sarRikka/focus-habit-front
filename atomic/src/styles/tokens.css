@@ -87,7 +87,37 @@
   --shadow-md: 0 4px 16px rgba(20, 30, 60, 0.06), 0 2px 4px rgba(20, 30, 60, 0.03);
   --shadow-lg: 0 12px 32px rgba(20, 30, 60, 0.08), 0 4px 8px rgba(20, 30, 60, 0.04);
   --shadow-xl: 0 24px 48px rgba(20, 30, 60, 0.10);
+
+  /* 标签/图标上文字色（深浅主题分别可读） */
+  --accent-mint: #3D9A7E;
+  --accent-lavender: #6B5BA8;
+  --accent-peach: #B87A42;
+  --accent-coral: #C76C6B;
+  --accent-sun: #b79a4b;
+
+  /* 侧栏底部连续打卡数字渐变 */
+  --gradient-streak: linear-gradient(135deg, var(--brand-hover) 0%, var(--lavender) 100%);
   --shadow-inset: inset 0 1px 2px rgba(20, 30, 60, 0.04);
+
+  /* 图表 / 进度条渐变端点（浅色） */
+  --pr-brand-0: #8faee6;
+  --pr-brand-1: #a89bd9;
+  --pr-mint-0: #92d6bf;
+  --pr-mint-1: #7dcbb3;
+  --pr-lavender-0: #b6abe2;
+  --pr-lavender-1: #a89bd9;
+  --pr-peach-0: #f4c9a2;
+  --pr-peach-1: #f0b98a;
+
+  /* 折线图、复盘趋势等 */
+  --chart-brand: #8faee6;
+  --chart-brand-mid: #7b9ddb;
+
+  /* 今日柱条等（lavender → brand） */
+  --gradient-weekly-today: linear-gradient(180deg, #b6abe2 0%, #8faee6 100%);
+
+  /* 打卡页活力池容器（浅色） */
+  --energy-pool-vessel-bg: linear-gradient(188deg, #f3fcf6 0%, #dcf5e8 42%, #b8e8cf 100%);
 
   /* —— 字体 —— */
   --font-sans: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei",
@@ -167,4 +197,64 @@
   --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.24);
   --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.28);
   --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.36);
+  --shadow-xl: 0 24px 48px rgba(0, 0, 0, 0.42);
+
+  --gradient-brand: linear-gradient(135deg, #6b85c4 0%, #8a9ec8 100%);
+  --gradient-mint: linear-gradient(135deg, #4a9d84 0%, #5fb89a 100%);
+  --gradient-lavender: linear-gradient(135deg, #7d73a8 0%, #9285b8 100%);
+  --gradient-peach: linear-gradient(135deg, #b88762 0%, #c49a72 100%);
+  --gradient-aurora: linear-gradient(135deg, #1f2a3d 0%, #25223a 50%, #1b2a26 100%);
+  --gradient-sky: linear-gradient(180deg, #191d24 0%, #1e2229 100%);
+  --gradient-streak: linear-gradient(135deg, #7a93d0 0%, #9a8ec8 100%);
+  --gradient-weekly-today: linear-gradient(180deg, #8a7bae 0%, #6b85c4 100%);
+
+  --accent-mint: #6dd4b8;
+  --accent-lavender: #a99ae0;
+  --accent-peach: #e0b078;
+  --accent-coral: #e8a6a4;
+  --accent-sun: #d4c06e;
+
+  --pr-brand-0: #6b8bc8;
+  --pr-brand-1: #9285c4;
+  --pr-mint-0: #5fb89a;
+  --pr-mint-1: #4a9d84;
+  --pr-lavender-0: #8e82b8;
+  --pr-lavender-1: #9285c4;
+  --pr-peach-0: #c49a72;
+  --pr-peach-1: #b88762;
+
+  --chart-brand: #6d8ec8;
+  --chart-brand-mid: #7b9ddb;
+
+  --energy-pool-vessel-bg: linear-gradient(188deg, #142018 0%, #0f1f16 42%, #0a1810 100%);
+}
+
+/* 打卡页「活力池」深色：仅覆盖局部变量与高光，避免浅色玻璃感 */
+html[data-theme="dark"] .energy-pool.energy-pool--vitality {
+  --pool-lime: #4ade80;
+  --pool-accent: #34d399;
+  --pool-accent-mid: #2dd4bf;
+  --pool-accent-deep: #047857;
+  --pool-glow: rgba(52, 211, 153, 0.28);
+  --pool-glow-strong: rgba(45, 212, 191, 0.38);
+}
+
+html[data-theme="dark"] .energy-pool .energy-pool__vessel {
+  box-shadow:
+    inset 0 20px 40px rgba(0, 0, 0, 0.35),
+    inset 0 -22px 36px rgba(0, 0, 0, 0.25),
+    0 12px 32px rgba(0, 0, 0, 0.35),
+    0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+html[data-theme="dark"] .energy-pool .energy-pool__vessel-rim {
+  box-shadow:
+    inset 0 3px 0 rgba(255, 255, 255, 0.06),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.35);
+}
+
+html[data-theme="dark"] .energy-pool .energy-pool__depth {
+  background:
+    radial-gradient(ellipse 100% 70% at 50% 0%, rgba(255, 255, 255, 0.06), transparent 50%),
+    radial-gradient(ellipse 130% 85% at 50% 100%, rgba(16, 185, 129, 0.18), transparent 58%);
 }

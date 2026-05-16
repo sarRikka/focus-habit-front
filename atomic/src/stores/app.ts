@@ -8,11 +8,13 @@ import {
   seedGoals, seedReviews, seedScenes, seedProfile, seedSettings,
 } from '../data/seed';
 import {
-  lsGet, lsSet, todayStr, uid, addDays, diffDays, encouragements, pickRandom,
+  lsGet, lsSet, todayStr, uid, addDays, diffDays, encouragements, pickRandom, clampProgressDeduction,
+  normalizePhoneE164, clamp,
+  effectiveDailyTargetMinutes, minCheckinRecordedMinutes,
 } from '../composables/utils';
-import { isRemote, ApiError } from '../api/http';
+import { isRemote, ApiError, setTokens } from '../api/http';
 import {
-  checkinApi, goalApi, reviewApi, sceneApi, settingsApi, userApi, rewardApi, dataApi,
+  authApi, checkinApi, goalApi, reviewApi, sceneApi, settingsApi, userApi, rewardApi, dataApi,
 } from '../api';
 import { pullRemoteSnapshot, pullGoalDetail } from '../api/remote';
 import {
@@ -34,7 +36,7 @@ interface PersistedState {
  * 把可能由旧版本写入的目标补齐缺失字段，避免渲染异常。
  */
 function migrateGoal(g: Partial<Goal> & { id: string }): Goal {
-  return {
+  const merged = {
     manualDeduction: 0,
     archived: false,
     fixed: false,
@@ -44,6 +46,15 @@ function migrateGoal(g: Partial<Goal> & { id: string }): Goal {
     phases: [],
     ...g,
   } as Goal;
+  const dh = merged.dailyHabit;
+  merged.dailyHabit = {
+    description: String(dh?.description ?? ''),
+    duration: Math.max(1, Number(dh?.duration ?? 30)),
+    autoLevelUp: Boolean(dh?.autoLevelUp),
+    levelUpStep: Math.max(1, Number(dh?.levelUpStep ?? 1)),
+    daysPerWeek: dh?.daysPerWeek != null ? clamp(Number(dh.daysPerWeek), 1, 7) : 7,
+  };
+  return merged;
 }
 
 function emptyState(): PersistedState {
@@ -257,6 +268,17 @@ export const useAppStore = defineStore('app', () => {
     const previous = g.checkins[date];
     const wasChecked = !!previous && (previous.status === 'done' || previous.status === 'late');
 
+    const effTargetMin = effectiveDailyTargetMinutes(g.dailyHabit.duration, activeScene.value);
+    const minRecordedMin = minCheckinRecordedMinutes(effTargetMin);
+    if ((status === 'done' || status === 'late') && opts.duration < minRecordedMin) {
+      showToast({
+        type: 'warning',
+        title: '时长未到一半',
+        desc: `完成打卡至少需要 ${minRecordedMin} 分钟（当日目标的一半）`,
+      });
+      return;
+    }
+
     if (isRemote) {
       try {
         const res = await checkinApi.doCheckin(goalId, {
@@ -322,11 +344,14 @@ export const useAppStore = defineStore('app', () => {
     }
   }
 
-  async function applyMissed(goalId: string, deduct: boolean) {
+  async function applyMissed(goalId: string, deduct: boolean, deductionPercent?: number) {
     const g = getGoal(goalId);
     if (!g) return;
     const date = todayStr();
     const previous = g.checkins[date];
+    const deduction = deduct
+      ? clampProgressDeduction(deductionPercent ?? 1)
+      : 0;
     g.checkins[date] = { date, status: 'missed', duration: 0 };
 
     if (isRemote) {
@@ -334,12 +359,13 @@ export const useAppStore = defineStore('app', () => {
         const r = await checkinApi.markMissed(goalId, {
           date,
           deduct_progress: deduct,
+          deduction_percent: deduct ? deduction : undefined,
           client_op_id: uid('op'),
         });
         g.progress = r.goal_progress;
         g.manualDeduction = r.manual_deduction_total;
         if (deduct) {
-          showToast({ type: 'warning', title: `进度 -${r.deducted ?? settings.value.defaultProgressDeduction}%`, desc: pickRandom(encouragements.low) });
+          showToast({ type: 'warning', title: `进度 -${r.deducted ?? deduction}%`, desc: pickRandom(encouragements.low) });
         } else {
           showToast({ type: 'info', title: '已记录今日未打卡', desc: pickRandom(encouragements.low) });
         }
@@ -351,7 +377,6 @@ export const useAppStore = defineStore('app', () => {
     }
 
     if (deduct) {
-      const deduction = settings.value.defaultProgressDeduction;
       g.manualDeduction = (g.manualDeduction ?? 0) + deduction;
       recomputeProgress(goalId);
       showToast({
@@ -697,6 +722,76 @@ export const useAppStore = defineStore('app', () => {
     }
   }
 
+  /** 手机号 + 密码登录；可选合并当前游客账户数据（merge_guest_user_id） */
+  async function loginWithPassword(phone: string, password: string, mergeGuest = true) {
+    if (!isRemote) return;
+    const normalized = normalizePhoneE164(phone);
+    if (!normalized.startsWith('+')) {
+      showToast({ type: 'warning', title: '手机号格式有误', desc: '请输入中国大陆手机号或带国家码的号码' });
+      return;
+    }
+    const mergeId = mergeGuest && profile.value.isGuest === true && profile.value.userId
+      ? profile.value.userId
+      : undefined;
+    try {
+      const r = await authApi.login(normalized, password, mergeId);
+      setTokens({
+        access_token: r.access_token,
+        refresh_token: r.refresh_token,
+        expires_at: Date.now() + (r.expires_in ?? 7200) * 1000,
+      });
+      await bootstrapFromRemote();
+      showToast({ type: 'success', title: '登录成功', desc: '数据已与云端同步' });
+    } catch (e) {
+      showToast({ type: 'danger', title: '登录失败', desc: e instanceof ApiError ? e.message : '网络错误' });
+      throw e;
+    }
+  }
+
+  /** 注册：响应含 token 时与登录等同，直接拉取远程快照 */
+  async function registerWithPassword(phone: string, password: string, mergeGuest = true) {
+    if (!isRemote) return;
+    const normalized = normalizePhoneE164(phone);
+    if (!normalized.startsWith('+')) {
+      showToast({ type: 'warning', title: '手机号格式有误', desc: '请输入中国大陆手机号或带国家码的号码' });
+      return;
+    }
+    const mergeId = mergeGuest && profile.value.isGuest === true && profile.value.userId
+      ? profile.value.userId
+      : undefined;
+    try {
+      const r = await authApi.register(normalized, password, mergeId);
+      setTokens({
+        access_token: r.access_token,
+        refresh_token: r.refresh_token,
+        expires_at: Date.now() + (r.expires_in ?? 7200) * 1000,
+      });
+      await bootstrapFromRemote();
+      showToast({ type: 'success', title: '注册成功', desc: '数据已与云端同步' });
+    } catch (e) {
+      showToast({ type: 'danger', title: '注册失败', desc: e instanceof ApiError ? e.message : '网络错误' });
+      throw e;
+    }
+  }
+
+  /** 退出当前账号并回到游客会话（若开启游客接口） */
+  async function logoutAccount() {
+    if (!isRemote) return;
+    try {
+      await authApi.logout();
+    } catch {
+      /* 令牌失效时仍清除本地会话 */
+    }
+    setTokens(null);
+    try {
+      await bootstrapFromRemote();
+      showToast({ type: 'info', title: '已退出登录', desc: '已切换为游客会话' });
+    } catch (e) {
+      remoteError.value = e instanceof Error ? e.message : '刷新失败';
+      showToast({ type: 'danger', title: '退出后刷新失败', desc: remoteError.value || '' });
+    }
+  }
+
   async function fetchGoalDetail(id: string) {
     if (!isRemote) return;
     try {
@@ -753,5 +848,6 @@ export const useAppStore = defineStore('app', () => {
     addScene, deleteScene, isSceneActive,
     updateSettings, updateProfile, resetAll, showToast, totalMinutesOf,
     bootstrapFromRemote, fetchGoalDetail,
+    loginWithPassword, registerWithPassword, logoutAccount,
   };
 });

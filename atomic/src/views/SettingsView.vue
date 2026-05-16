@@ -2,9 +2,9 @@
 import { reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import {
-  ChevronLeft, Bell, Moon, Sun, Sparkles, Trash2, Plus,
+  ChevronLeft, Moon, Sun, Sparkles, Trash2, Plus,
   RefreshCw, Plane, Briefcase, Heart, Calendar as CalendarIcon,
-  Shield, MessageCircleHeart, Database,
+  Shield, Database,
 } from 'lucide-vue-next';
 import { useAppStore } from '../stores/app';
 import { todayStr, addDays, formatDate } from '../composables/utils';
@@ -93,7 +93,6 @@ const retentionOptions = [
   { key: 'forever', label: '永久' },
 ] as const;
 
-const deductionOptions = [1, 2, 3, 5];
 </script>
 
 <template>
@@ -101,66 +100,6 @@ const deductionOptions = [1, 2, 3, 5];
     <button class="back" @click="router.back()">
       <ChevronLeft :size="18" :stroke-width="2" /> <span>返回</span>
     </button>
-
-    <!-- 打卡提醒 -->
-    <section class="card card--padded">
-      <div class="section-title">
-        <div class="section-title__main">
-          <h3><Bell :size="14" :stroke-width="2" style="vertical-align:-2px;margin-right:4px" /> 打卡提醒</h3>
-          <span class="section-title__sub">每日固定时间正向鼓励，避免遗漏</span>
-        </div>
-      </div>
-      <div class="row">
-        <label class="row__label">提醒时间</label>
-        <input :value="store.settings.reminderTime" @change="store.updateSettings({ reminderTime: ($event.target as HTMLInputElement).value })" type="time" class="input row__input" />
-      </div>
-      <div class="row">
-        <label class="row__label">未打卡重复推送</label>
-        <div class="seg">
-          <button v-for="n in [1,2,3]" :key="n" class="seg__btn" :class="{'seg__btn--active': store.settings.reminderRepeat === n}" @click="store.updateSettings({ reminderRepeat: n })">
-            {{ n }} 次
-          </button>
-        </div>
-      </div>
-    </section>
-
-    <!-- 复盘提醒 -->
-    <section class="card card--padded">
-      <div class="section-title">
-        <div class="section-title__main">
-          <h3><MessageCircleHeart :size="14" :stroke-width="2" style="vertical-align:-2px;margin-right:4px" /> 复盘提醒</h3>
-          <span class="section-title__sub">每周日 / 每月最后一天自动推送</span>
-        </div>
-      </div>
-      <div class="row">
-        <label class="row__label">开启复盘提醒</label>
-        <button class="switch" :class="{ 'switch--on': store.settings.reviewReminderEnabled }" @click="store.updateSettings({ reviewReminderEnabled: !store.settings.reviewReminderEnabled })">
-          <span class="switch__dot"></span>
-        </button>
-      </div>
-      <div class="row" v-if="store.settings.reviewReminderEnabled">
-        <label class="row__label">提醒时间</label>
-        <input :value="store.settings.reviewReminderTime" @change="store.updateSettings({ reviewReminderTime: ($event.target as HTMLInputElement).value })" type="time" class="input row__input" />
-      </div>
-    </section>
-
-    <!-- 进度规则 -->
-    <section class="card card--padded">
-      <div class="section-title">
-        <div class="section-title__main">
-          <h3><Sparkles :size="14" :stroke-width="2" style="vertical-align:-2px;margin-right:4px" /> 进度与扣除规则</h3>
-          <span class="section-title__sub">未按预定完成时的进度扣除比例</span>
-        </div>
-      </div>
-      <div class="row">
-        <label class="row__label">默认扣除比例</label>
-        <div class="seg">
-          <button v-for="n in deductionOptions" :key="n" class="seg__btn" :class="{'seg__btn--active': store.settings.defaultProgressDeduction === n}" @click="store.updateSettings({ defaultProgressDeduction: n })">
-            {{ n }}%
-          </button>
-        </div>
-      </div>
-    </section>
 
     <!-- 特殊场景 -->
     <section class="card card--padded">
@@ -200,8 +139,8 @@ const deductionOptions = [1, 2, 3, 5];
     <section class="card card--padded">
       <div class="section-title">
         <div class="section-title__main">
-          <h3><MessageCircleHeart :size="14" :stroke-width="2" style="vertical-align:-2px;margin-right:4px" /> 个性化鼓励语</h3>
-          <span class="section-title__sub">触发鼓励场景时优先推送</span>
+          <h3><Sparkles :size="14" :stroke-width="2" style="vertical-align:-2px;margin-right:4px" /> 个性化鼓励语</h3>
+          <span class="section-title__sub">打卡成功等场景随机展示时优先采用</span>
         </div>
       </div>
       <div class="phrase-add">
@@ -257,12 +196,6 @@ const deductionOptions = [1, 2, 3, 5];
             {{ o.label }}
           </button>
         </div>
-      </div>
-      <div class="row">
-        <label class="row__label">推送通知</label>
-        <button class="switch" :class="{ 'switch--on': store.settings.pushEnabled }" @click="store.updateSettings({ pushEnabled: !store.settings.pushEnabled })">
-          <span class="switch__dot"></span>
-        </button>
       </div>
       <div class="divider"></div>
       <div class="row">
@@ -381,6 +314,17 @@ const deductionOptions = [1, 2, 3, 5];
   font-weight: 500;
 }
 .row__input { width: 140px; }
+.row--stack {
+  flex-direction: column;
+  align-items: stretch;
+}
+.row--stack .row__label { margin-bottom: var(--space-2); }
+.row__hint {
+  margin: var(--space-2) 0 0;
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  line-height: 1.5;
+}
 
 .seg {
   display: inline-flex;
@@ -401,6 +345,10 @@ const deductionOptions = [1, 2, 3, 5];
   background: var(--surface);
   color: var(--brand-active);
   box-shadow: var(--shadow-xs);
+}
+.seg--wrap {
+  flex-wrap: wrap;
+  margin-top: var(--space-2);
 }
 
 /* switch */

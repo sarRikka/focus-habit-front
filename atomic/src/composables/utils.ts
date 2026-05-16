@@ -49,8 +49,84 @@ export function addDays(d: string, n: number): string {
   return formatDate(date);
 }
 
+/**
+ * 将闭区间 [startBound, endBound] 的天数跨度均分为 segmentCount 段，每段为含首尾日期的日历区间，
+ * 最后一段的截止日期对齐 endBound。用于创建目标时自动生成前两阶段的阶段日期。
+ */
+export function equalDateSegments(
+  startBound: string,
+  endBound: string,
+  segmentCount: number,
+): { startDate: string; endDate: string }[] {
+  const n = Math.max(1, Math.floor(segmentCount));
+  const spanDays = Math.max(0, diffDays(startBound, endBound));
+  if (spanDays === 0) {
+    return Array.from({ length: n }, () => ({ startDate: startBound, endDate: endBound }));
+  }
+  const segments: { startDate: string; endDate: string }[] = [];
+  for (let i = 0; i < n; i++) {
+    const sliceStartOffset = Math.floor((i * spanDays) / n);
+    const sliceEndOffsetInclusive = i === n - 1
+      ? spanDays
+      : Math.floor(((i + 1) * spanDays) / n) - 1;
+    const startDate = addDays(startBound, sliceStartOffset);
+    const endDate = i === n - 1 ? endBound : addDays(startBound, sliceEndOffsetInclusive);
+    segments.push({ startDate, endDate });
+  }
+  return segments;
+}
+
 export function clamp(n: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, n));
+}
+
+/** 未打卡扣除进度比例（PRD R02：0%–10%） */
+export function clampProgressDeduction(n: number): number {
+  if (!Number.isFinite(n)) return 1;
+  return clamp(Math.round(n), 0, 10);
+}
+
+/**
+ * 与打卡页一致的「有效每日目标时长」（分钟）。
+ * 「缩短时长」特殊场景下，以 min(原每日时长, shortenTo) 为当日目标。
+ */
+export function effectiveDailyTargetMinutes(
+  dailyDuration: number,
+  scene: { mode: string; shortenTo?: number } | undefined,
+): number {
+  const raw = Number(dailyDuration);
+  const base = Number.isFinite(raw) && raw > 0 ? Math.max(1, Math.round(raw)) : 30;
+  if (scene?.mode === 'shorten' && scene.shortenTo != null) {
+    const stRaw = Number(scene.shortenTo);
+    const st = Number.isFinite(stRaw) ? Math.max(1, Math.round(stRaw)) : 1;
+    return Math.min(base, st);
+  }
+  return base;
+}
+
+/** 完成打卡所需的最低累计计时（秒）：有效目标的一半，按秒向上取整 */
+export function minCheckinElapsedSeconds(targetMinutes: number): number {
+  const raw = Number(targetMinutes);
+  const m = Number.isFinite(raw) && raw > 0 ? Math.max(1, Math.round(raw)) : 30;
+  return Math.ceil((m * 60) / 2);
+}
+
+/** 与「一半」对齐的整数分钟下限，用于校验提交体中的打卡时长 */
+export function minCheckinRecordedMinutes(targetMinutes: number): number {
+  const raw = Number(targetMinutes);
+  const m = Number.isFinite(raw) && raw > 0 ? Math.max(1, Math.round(raw)) : 30;
+  return Math.max(1, Math.ceil(m / 2));
+}
+
+/** 规范为 E.164；中国大陆 11 位手机号默认加 +86 */
+export function normalizePhoneE164(raw: string): string {
+  const s = raw.trim().replace(/\s+/g, '');
+  if (!s) return '';
+  if (s.startsWith('+')) return s;
+  const digits = s.replace(/\D/g, '');
+  if (digits.length === 11 && digits.startsWith('1')) return `+86${digits}`;
+  if (digits.length >= 8) return `+${digits}`;
+  return s;
 }
 
 export function pickRandom<T>(arr: T[]): T {
@@ -129,4 +205,15 @@ export const goalColors = ['brand', 'mint', 'lavender', 'peach'] as const;
 /** 图标候选 */
 export const goalIcons = [
   '🎯', '📚', '💪', '🧘', '🌅', '✍️', '🎨', '🎵', '🌱', '⚡', '🔥', '💎',
+];
+
+/** 每周打卡天数（创建/编辑目标 UI 共用） */
+export const weeklyCheckinDayChoices: { value: number; label: string }[] = [
+  { value: 7, label: '每天' },
+  { value: 6, label: '6 天' },
+  { value: 5, label: '5 天' },
+  { value: 4, label: '4 天' },
+  { value: 3, label: '3 天' },
+  { value: 2, label: '2 天' },
+  { value: 1, label: '1 天' },
 ];

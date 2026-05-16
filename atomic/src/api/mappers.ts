@@ -4,7 +4,7 @@
  */
 
 import type { Goal, AppSettings, UserProfile, ReviewReport, SpecialScene, CheckinRecord, PhaseTask, RewardStage, DailyHabit } from '../types';
-import { uid } from '../composables/utils';
+import { uid, clampProgressDeduction, clamp } from '../composables/utils';
 
 function toSnakeKey(s: string): string {
   return s.replace(/([A-Z])/g, m => `_${m.toLowerCase()}`);
@@ -57,9 +57,13 @@ export function mapGoalFromApi(input: unknown): Goal {
   const daily = (o.dailyHabit || o.daily_habit) as Record<string, unknown> | undefined;
   const dailyHabit: DailyHabit = {
     description: String(daily?.description ?? ''),
-    duration: Math.max(1, Number(daily?.duration ?? 10)),
+    duration: Math.max(1, Number(daily?.duration ?? 30)),
     autoLevelUp: Boolean(daily?.autoLevelUp ?? daily?.auto_level_up ?? false),
     levelUpStep: Math.max(1, Number(daily?.levelUpStep ?? daily?.level_up_step ?? 1)),
+    daysPerWeek: (() => {
+      const raw = Number(daily?.daysPerWeek ?? daily?.days_per_week ?? 7);
+      return Number.isFinite(raw) ? clamp(raw, 1, 7) : 7;
+    })(),
   };
   const phasesIn = (o.phases as PhaseTask[] | undefined) ?? [];
   const phases: PhaseTask[] = (Array.isArray(phasesIn) ? phasesIn : []).map((p) => ({
@@ -108,6 +112,8 @@ export function mapProfileFromApi(input: unknown): UserProfile {
   const o = keysToCamel<Record<string, unknown>>(input) as unknown as Record<string, unknown>;
   const stats = (o.stats as Record<string, number> | undefined) || {};
   return {
+    userId: o.userId != null && String(o.userId) !== '' ? String(o.userId) : undefined,
+    isGuest: typeof o.isGuest === 'boolean' ? o.isGuest : undefined,
     nickname: String(o.nickname || '用户'),
     avatar: o.avatar as string | undefined,
     joinedAt: String(o.joinedAt || ''),
@@ -128,7 +134,7 @@ export function mapSettingsFromApi(input: unknown): AppSettings {
     theme: (o.theme as AppSettings['theme']) || 'light',
     dataRetention: (o.dataRetention as AppSettings['dataRetention']) || '1y',
     customEncouragements: Array.isArray(o.customEncouragements) ? o.customEncouragements as string[] : [],
-    defaultProgressDeduction: Math.max(1, Math.min(5, Number(o.defaultProgressDeduction ?? 1))),
+    defaultProgressDeduction: clampProgressDeduction(Number(o.defaultProgressDeduction ?? 1)),
   };
 }
 
@@ -196,6 +202,7 @@ export function goalToCreateApiBody(g: Goal, clientOpId: string): Record<string,
       duration: g.dailyHabit.duration,
       auto_level_up: g.dailyHabit.autoLevelUp,
       level_up_step: g.dailyHabit.levelUpStep,
+      days_per_week: g.dailyHabit.daysPerWeek ?? 7,
     },
     client_op_id: clientOpId,
   };

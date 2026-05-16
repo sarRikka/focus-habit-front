@@ -9,6 +9,7 @@
     "typecheck": "vue-tsc -b",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:goal-create": "vitest run src/composables/goalCreateFlow.test.ts",
     "test:all": "vue-tsc -b && vitest run && vite build",
     "preview": "vite preview"
   },

@@ -32,6 +32,17 @@ describe('mapProfileFromApi', () => {
     expect(p.totalCheckinDays).toBe(5);
     expect(p.fixedHabitsCount).toBe(2);
   });
+
+  it('maps user_id and is_guest from snake_case', () => {
+    const p = mapProfileFromApi({
+      user_id: 'u_1',
+      is_guest: true,
+      nickname: '访客',
+      badges: [],
+    });
+    expect(p.userId).toBe('u_1');
+    expect(p.isGuest).toBe(true);
+  });
 });
 
 describe('mapReviewFromApi', () => {

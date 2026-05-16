@@ -18,9 +18,15 @@ export const authApi = {
       '/auth/guest', { device_id: deviceId },
     ),
   sendCode:  (phone: string, scene = 'login') => http.post<void>('/auth/send-code', { phone, scene }),
-  login:     (phone: string, code: string, mergeGuestUserId?: string) =>
+  /** 手机号 + 密码登录；`merge_guest_user_id` 可将当前游客数据并入该账号 */
+  login:     (phone: string, password: string, mergeGuestUserId?: string) =>
     http.post<{ user_id: string; access_token: string; refresh_token: string; expires_in: number; is_guest: boolean }>(
-      '/auth/login', { phone, code, merge_guest_user_id: mergeGuestUserId },
+      '/auth/login', { phone, password, merge_guest_user_id: mergeGuestUserId },
+    ),
+  /** 新用户注册；响应与 login 一致时客户端可直接写入 token 并完成同步 */
+  register: (phone: string, password: string, mergeGuestUserId?: string) =>
+    http.post<{ user_id: string; access_token: string; refresh_token: string; expires_in: number; is_guest: boolean }>(
+      '/auth/register', { phone, password, merge_guest_user_id: mergeGuestUserId },
     ),
   refresh:   (refreshToken: string) =>
     http.post<{ access_token: string; refresh_token: string; expires_in: number }>(
@@ -86,7 +92,7 @@ export const checkinApi = {
 
   markMissed: (
     goalId: string,
-    payload: { date?: string; deduct_progress: boolean; client_op_id: string },
+    payload: { date?: string; deduct_progress: boolean; deduction_percent?: number; client_op_id: string },
   ) => http.post<{ goal_progress: number; deducted: number; manual_deduction_total: number }>(
     `/goals/${goalId}/checkins/missed`, payload,
   ),

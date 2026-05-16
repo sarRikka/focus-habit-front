@@ -71,6 +71,11 @@ img, svg {
   color: var(--brand-active);
 }
 
+[data-theme="dark"] ::selection {
+  background: color-mix(in srgb, var(--brand) 35%, var(--brand-soft));
+  color: var(--text-primary);
+}
+
 /* ============================================================
    Scrollbar
    ============================================================ */
@@ -160,7 +165,7 @@ img, svg {
   border-color: var(--brand-border);
 }
 .btn--secondary:not(:disabled):hover {
-  background: #E5ECF8;
+  background: color-mix(in srgb, var(--brand) 14%, var(--brand-soft));
 }
 
 .btn--ghost {
@@ -187,7 +192,7 @@ img, svg {
   color: var(--coral);
 }
 .btn--danger:not(:disabled):hover {
-  background: #F8DCDA;
+  background: color-mix(in srgb, var(--danger) 22%, var(--danger-soft));
 }
 
 .btn--sm { height: 30px; padding: 0 var(--space-3); font-size: var(--text-sm); }
@@ -236,6 +241,49 @@ img, svg {
   line-height: var(--leading-normal);
 }
 
+/* —— Weekly check-in days（芯片组，替代原生 select）—— */
+.weekly-days {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 4px;
+  background: var(--bg-soft);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+.weekly-days__btn {
+  display: inline-flex;
+  align-items: center;
+  flex: 1 1 auto;
+  justify-content: center;
+  min-width: 4.25rem;
+  min-height: 36px;
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--text-secondary);
+  background: transparent;
+  cursor: pointer;
+  transition:
+    background var(--duration-fast) var(--ease-out),
+    color var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-fast) var(--ease-out);
+}
+.weekly-days__btn:hover {
+  background: var(--surface);
+  color: var(--text-primary);
+}
+.weekly-days__btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--brand-soft), var(--shadow-xs);
+}
+.weekly-days__btn--active {
+  background: var(--surface);
+  color: var(--brand-active);
+  box-shadow: var(--shadow-xs);
+}
+
 /* —— Tag / Chip —— */
 .tag {
   display: inline-flex;
@@ -251,11 +299,11 @@ img, svg {
   letter-spacing: 0.2px;
 }
 .tag--brand { background: var(--brand-soft); color: var(--brand-active); }
-.tag--mint { background: var(--mint-soft); color: #4DA88B; }
-.tag--lavender { background: var(--lavender-soft); color: #7665B8; }
-.tag--peach { background: var(--peach-soft); color: #C68A52; }
-.tag--coral { background: var(--coral-soft); color: #C76C6B; }
-.tag--sun { background: var(--sun-soft); color: #B79A4B; }
+.tag--mint { background: var(--mint-soft); color: var(--accent-mint); }
+.tag--lavender { background: var(--lavender-soft); color: var(--accent-lavender); }
+.tag--peach { background: var(--peach-soft); color: var(--accent-peach); }
+.tag--coral { background: var(--coral-soft); color: var(--accent-coral); }
+.tag--sun { background: var(--sun-soft); color: var(--accent-sun); }
 
 /* —— Section title —— */
 .section-title {

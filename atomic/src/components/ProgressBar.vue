@@ -14,10 +14,10 @@ const props = withDefaults(defineProps<{
 
 const fillStyle = computed(() => {
   const map = {
-    brand: 'linear-gradient(90deg, #8FAEE6 0%, #A89BD9 100%)',
-    mint: 'linear-gradient(90deg, #92D6BF 0%, #7DCBB3 100%)',
-    lavender: 'linear-gradient(90deg, #B6ABE2 0%, #A89BD9 100%)',
-    peach: 'linear-gradient(90deg, #F4C9A2 0%, #F0B98A 100%)',
+    brand: 'linear-gradient(90deg, var(--pr-brand-0) 0%, var(--pr-brand-1) 100%)',
+    mint: 'linear-gradient(90deg, var(--pr-mint-0) 0%, var(--pr-mint-1) 100%)',
+    lavender: 'linear-gradient(90deg, var(--pr-lavender-0) 0%, var(--pr-lavender-1) 100%)',
+    peach: 'linear-gradient(90deg, var(--pr-peach-0) 0%, var(--pr-peach-1) 100%)',
   };
   return {
     background: map[props.color],

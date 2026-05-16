@@ -1,36 +1,26 @@
 <script setup lang="ts">
-import { computed, reactive, ref } from 'vue';
+import { computed, reactive, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import {
   ChevronLeft, ChevronRight, Check, Lightbulb,
-  Plus, Trash2, AlertCircle,
 } from 'lucide-vue-next';
 import { useAppStore } from '../stores/app';
-import { addDays, categoryPresets, goalIcons, todayStr, uid } from '../composables/utils';
-import type { Goal, GoalCategory, PhaseTask } from '../types';
-
+import { addDays, categoryPresets, goalIcons, todayStr, uid, weeklyCheckinDayChoices, formatMinutes } from '../composables/utils';
+import {
+  buildGoalFromCreateForm,
+  completionDaysRoundedFromForm,
+  perDayMinutesFromForm,
+  plannedTotalMinutesFromForm,
+  validateGoalCreateStep,
+  type GoalCreateFormInput,
+} from '../composables/goalCreateFlow';
 const router = useRouter();
 const store = useAppStore();
 
 const step = ref(1);
 const totalSteps = 3;
 
-interface FormState {
-  category: GoalCategory;
-  customCategoryName: string;
-  name: string;
-  finalGoal: string;
-  coreNeed: string;
-  deadline: string;
-  totalDescription: string;
-  phases: { name: string; description: string; totalMinutes: number; startDate: string; endDate: string }[];
-  dailyDescription: string;
-  dailyDuration: number;
-  autoLevelUp: boolean;
-  levelUpStep: number;
-  icon: string;
-  color: 'brand' | 'mint' | 'lavender' | 'peach';
-}
+interface FormState extends GoalCreateFormInput {}
 
 const form = reactive<FormState>({
   category: 'habit',
@@ -40,14 +30,11 @@ const form = reactive<FormState>({
   coreNeed: '',
   deadline: addDays(todayStr(), 60),
   totalDescription: '',
-  phases: [
-    { name: '第 1 阶段', description: '', totalMinutes: 300, startDate: todayStr(), endDate: addDays(todayStr(), 30) },
-    { name: '第 2 阶段', description: '', totalMinutes: 450, startDate: addDays(todayStr(), 30), endDate: addDays(todayStr(), 60) },
-  ],
+  completionDays: 60,
+  dailyHours: 0,
+  dailyMinutes: 30,
   dailyDescription: '',
-  dailyDuration: 10,
-  autoLevelUp: true,
-  levelUpStep: 2,
+  daysPerWeek: 7,
   icon: '🎯',
   color: 'brand',
 });
@@ -59,45 +46,30 @@ const colorOptions: { key: FormState['color']; name: string }[] = [
   { key: 'peach', name: '蜜桃' },
 ];
 
-const overTime = computed(() => form.dailyDuration > 10);
+/** 每天在计划中的投入（分钟），用于阶段总时长与打卡目标 */
+const perDayMinutes = computed(() => perDayMinutesFromForm(form));
 
-function addPhase() {
-  const idx = form.phases.length + 1;
-  const last = form.phases[form.phases.length - 1];
-  form.phases.push({
-    name: `第 ${idx} 阶段`,
-    description: '',
-    totalMinutes: 300,
-    startDate: last ? last.endDate : todayStr(),
-    endDate: last ? addDays(last.endDate, 30) : addDays(todayStr(), 30),
-  });
-}
-function removePhase(i: number) {
-  if (form.phases.length <= 1) return;
-  form.phases.splice(i, 1);
-}
+const completionDaysRounded = computed(() => completionDaysRoundedFromForm(form));
 
-const stepValid = computed(() => {
-  if (step.value === 1) {
-    return !!form.name.trim()
-      && !!form.finalGoal.trim()
-      && !!form.coreNeed.trim()
-      && !!form.deadline
-      && form.deadline >= todayStr();
-  }
-  if (step.value === 2) {
-    return form.phases.length > 0
-      && form.phases.every(p =>
-        p.name.trim()
-          && p.description.trim()
-          && p.startDate
-          && p.endDate
-          && p.endDate >= p.startDate
-      );
-  }
-  if (step.value === 3) return !!form.dailyDescription.trim() && form.dailyDuration > 0;
-  return false;
+/** 计划在第二步中的总投入（分钟）*/
+const plannedTotalMinutes = computed(() => plannedTotalMinutesFromForm(form));
+
+/** 计划总时长折合小时（用于第二步展示）；整数不写小数，否则一位小数 */
+const plannedTotalHoursText = computed(() => {
+  const m = plannedTotalMinutes.value;
+  const h = m / 60;
+  if (!Number.isFinite(h) || h <= 0) return '0';
+  const rounded = Math.round(h * 10) / 10;
+  return rounded % 1 === 0 ? String(Math.round(rounded)) : rounded.toFixed(1);
 });
+
+/** 第三步：默认展示第二步的时长，点此展开微调 */
+const showDailyTargetEdit = ref(false);
+watch(step, (s) => {
+  if (s === 3) showDailyTargetEdit.value = false;
+});
+
+const stepValid = computed(() => validateGoalCreateStep(step.value as 1 | 2 | 3, form, todayStr()));
 
 function next() {
   if (!stepValid.value) return;
@@ -110,41 +82,7 @@ function back() {
 }
 
 async function submit() {
-  const phases: PhaseTask[] = form.phases.map(p => ({
-    id: uid('p'),
-    name: p.name,
-    description: p.description,
-    totalMinutes: p.totalMinutes,
-    startDate: p.startDate,
-    endDate: p.endDate,
-    completed: false,
-  }));
-  const goal: Goal = {
-    id: uid('g'),
-    name: form.name.trim(),
-    category: form.category,
-    customCategoryName: form.category === 'custom' ? form.customCategoryName.trim() : undefined,
-    finalGoal: form.finalGoal.trim(),
-    coreNeed: form.coreNeed.trim(),
-    deadline: form.deadline,
-    createdAt: todayStr(),
-    totalDescription: form.totalDescription.trim() || form.finalGoal.trim(),
-    phases,
-    dailyHabit: {
-      description: form.dailyDescription.trim(),
-      duration: form.dailyDuration,
-      autoLevelUp: form.autoLevelUp,
-      levelUpStep: form.levelUpStep,
-    },
-    checkins: {},
-    rewards: [],
-    progress: 0,
-    manualDeduction: 0,
-    archived: false,
-    fixed: false,
-    color: form.color,
-    icon: form.icon,
-  };
+  const goal = buildGoalFromCreateForm(form, { goalId: uid('g') });
   try {
     const id = await store.addGoal(goal);
     router.push(`/goals/${id}`);
@@ -175,7 +113,7 @@ async function submit() {
             <span v-else class="num">{{ i }}</span>
           </div>
           <div class="stepper__label">
-            {{ ['基础信息', '阶段拆解', '每日习惯'][i - 1] }}
+            {{ ['基础信息', '计划周期', '每日习惯'][i - 1] }}
           </div>
           <div v-if="i < totalSteps" class="stepper__bar"></div>
         </div>
@@ -229,12 +167,23 @@ async function submit() {
         </div>
 
         <div class="form__field">
-          <label class="form__label">核心诉求（习惯固化判定标准）<span class="req">*</span></label>
-          <textarea
-            v-model="form.coreNeed"
-            class="textarea"
-            placeholder="进度达 100% 时，你希望已经具备的能力或状态…"
-          ></textarea>
+          <label class="form__label">核心诉求</label>
+          <details class="details-opt">
+            <summary class="details-opt__summary">
+              <span class="details-opt__title">可选填写</span>
+              <span class="details-opt__chev" aria-hidden="true">▾</span>
+              <span class="details-opt__hint-inline">点开展开，说明「真正想解决什么」；不填也能继续</span>
+            </summary>
+            <p class="field-help details-opt__lead">
+              用一两句话写清动机或深层需要（例如健康、自信、关系），习惯稳定后也可用来对照「有没有跑偏」。创建时跳过无妨，之后可在目标详情里补写。
+            </p>
+            <textarea
+              v-model="form.coreNeed"
+              class="textarea details-opt__body"
+              rows="3"
+              placeholder="例：不是单纯减肥，而是希望作息规律、白天更有精神"
+            ></textarea>
+          </details>
         </div>
 
         <div class="form__field">
@@ -268,17 +217,57 @@ async function submit() {
         </div>
       </section>
 
-      <!-- Step 2：阶段拆解 -->
+      <!-- Step 2：计划天数与每日投入 -->
       <section v-if="step === 2" class="card card--padded-lg form">
-        <h2 class="form__title">把目标拆成可执行的阶段</h2>
-        <p class="form__sub">"行动比意图更重要，把路标插在每一段路上"</p>
+        <h2 class="form__title">计划用多久、每天做多少</h2>
+        <p class="form__sub">"把总任务拆成可预期的天数与每日投入，进度更清晰"</p>
 
         <div class="hint card card--padded-sm">
           <Lightbulb :size="16" :stroke-width="2" />
           <div>
-            <strong>拆解示例</strong>
-            <span>能力提升类「3 个月掌握 Python」可拆为：第 1 月 基础语法 → 第 2 月 数据结构 → 第 3 月 综合练习</span>
+            <strong>怎么填</strong>
+            <span>「完成天数」是你预期坚持投入的天数；「每天」可填例如 1 小时 + 30 分钟。系统会用「天数 × 每天时长」汇总为进度条的总目标时长（与截止日期独立，你可自行对齐节奏）。</span>
           </div>
+        </div>
+
+        <div class="form__field">
+          <label class="form__label">完成需要多少天 <span class="req">*</span></label>
+          <input
+            v-model.number="form.completionDays"
+            type="number"
+            min="1"
+            step="1"
+            class="input input--narrow"
+          />
+          <p class="field-help">正整数，表示你希望分配在这个目标上的日历天数维度（计划跨度）。</p>
+        </div>
+
+        <div class="form__field">
+          <label class="form__label">每天投入 <span class="req">*</span></label>
+          <div class="form__dh">
+            <input
+              v-model.number="form.dailyHours"
+              type="number"
+              min="0"
+              step="1"
+              class="input input--narrow"
+            />
+            <span class="form__suffix">小时</span>
+            <input
+              v-model.number="form.dailyMinutes"
+              type="number"
+              min="0"
+              step="1"
+              class="input input--narrow"
+            />
+            <span class="form__suffix">分钟</span>
+          </div>
+          <p v-if="perDayMinutes < 1" class="field-help field-help--warn">每日至少投入 1 分钟（可把分钟调为 ≥1）。</p>
+          <p v-else class="field-help">
+            约 <strong>{{ formatMinutes(perDayMinutes) }}</strong> / 天；计划总计约 <strong>{{ formatMinutes(plannedTotalMinutes) }}</strong>
+            ，折合 <strong>{{ plannedTotalHoursText }} 小时</strong>
+            （{{ completionDaysRounded }} 天 × 每日投入）。
+          </p>
         </div>
 
         <div class="form__field">
@@ -287,44 +276,9 @@ async function submit() {
             v-model="form.totalDescription"
             class="textarea"
             rows="2"
-            placeholder="一句话描述这个目标整体要做什么"
+            placeholder="一句话描述这个目标整体要做什么（可选，将写入阶段说明）"
           ></textarea>
         </div>
-
-        <div class="phase-list">
-          <div v-for="(p, i) in form.phases" :key="i" class="phase-item card card--padded">
-            <div class="phase-item__head">
-              <input v-model="p.name" class="phase-item__name input" />
-              <button v-if="form.phases.length > 1" class="btn btn--ghost btn--icon" @click="removePhase(i)">
-                <Trash2 :size="14" :stroke-width="2" />
-              </button>
-            </div>
-            <textarea
-              v-model="p.description"
-              class="textarea"
-              rows="2"
-              placeholder="阶段事项：本阶段需要完成什么"
-            ></textarea>
-            <div class="phase-item__row">
-              <div class="form__field">
-                <label class="form__label">起始日期</label>
-                <input v-model="p.startDate" type="date" class="input" />
-              </div>
-              <div class="form__field">
-                <label class="form__label">截止日期</label>
-                <input v-model="p.endDate" type="date" class="input" />
-              </div>
-              <div class="form__field">
-                <label class="form__label">阶段总时长（分钟）</label>
-                <input v-model.number="p.totalMinutes" type="number" min="0" class="input" />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <button class="btn btn--secondary btn--block" @click="addPhase">
-          <Plus :size="16" :stroke-width="2.2" /> 添加新阶段
-        </button>
       </section>
 
       <!-- Step 3：每日习惯 -->
@@ -338,42 +292,69 @@ async function submit() {
             v-model="form.dailyDescription"
             class="textarea"
             rows="2"
-            placeholder="例：晚上 7 点学 Python 10 分钟，做 1 道练习题"
+            placeholder="例：晚上 7 点学习 30 分钟，完成 1 道练习题"
           ></textarea>
         </div>
 
-        <div class="form__row">
-          <div class="form__field">
-            <label class="form__label">每日时长（分钟）</label>
-            <input v-model.number="form.dailyDuration" type="number" min="1" class="input" />
-            <div v-if="overTime" class="warn">
-              <AlertCircle :size="14" :stroke-width="2" />
-              <span>时长不宜过长，确保每天可完成</span>
+        <div class="form__field">
+          <label class="form__label">每日计时目标</label>
+          <p class="field-help daily-target-intro">
+            默认与第二步「每天投入」一致。打卡页按此时长倒计时；若要单独缩短或拉长单次打卡目标，点击下方区域修改。
+          </p>
+          <button
+            type="button"
+            class="daily-target-summary"
+            :aria-expanded="showDailyTargetEdit"
+            aria-label="更改每日计时目标"
+            @click="showDailyTargetEdit = !showDailyTargetEdit"
+          >
+            <div class="daily-target-summary__text">
+              <span class="daily-target-summary__value">{{ formatMinutes(perDayMinutes) }}</span>
+              <span class="daily-target-summary__unit"> / 天</span>
+              <span v-if="!showDailyTargetEdit" class="daily-target-summary__tap-hint">轻触更改</span>
             </div>
+            <span class="daily-target-summary__action">{{ showDailyTargetEdit ? '收起' : '更改' }}</span>
+          </button>
+          <div v-show="showDailyTargetEdit" class="daily-target-edit">
+            <div class="form__dh">
+              <input
+                v-model.number="form.dailyHours"
+                type="number"
+                min="0"
+                step="1"
+                class="input input--narrow"
+              />
+              <span class="form__suffix">小时</span>
+              <input
+                v-model.number="form.dailyMinutes"
+                type="number"
+                min="0"
+                step="1"
+                class="input input--narrow"
+              />
+              <span class="form__suffix">分钟</span>
+            </div>
+            <p v-if="perDayMinutes < 1" class="field-help field-help--warn">合计至少 1 分钟。</p>
           </div>
         </div>
 
         <div class="form__field">
-          <label class="check-row">
-            <input v-model="form.autoLevelUp" type="checkbox" class="check" />
-            <div>
-              <div class="check-row__title">自动进阶</div>
-              <div class="check-row__sub">每连续打卡 7 天，自动增加每日时长</div>
-            </div>
-          </label>
-        </div>
-
-        <div v-if="form.autoLevelUp" class="form__field">
-          <label class="form__label">进阶幅度</label>
-          <div class="seg">
+          <label class="form__label">每周打卡天数</label>
+          <div class="weekly-days" role="radiogroup" aria-label="每周计划打卡天数">
             <button
-              v-for="n in [1, 2, 3, 5]"
-              :key="n"
-              class="seg__btn"
-              :class="{ 'seg__btn--active': form.levelUpStep === n }"
-              @click="form.levelUpStep = n"
-            >+{{ n }} 分钟</button>
+              v-for="opt in weeklyCheckinDayChoices"
+              :key="opt.value"
+              type="button"
+              role="radio"
+              :aria-checked="form.daysPerWeek === opt.value"
+              class="weekly-days__btn"
+              :class="{ 'weekly-days__btn--active': form.daysPerWeek === opt.value }"
+              @click="form.daysPerWeek = opt.value"
+            >
+              {{ opt.label }}
+            </button>
           </div>
+          <p class="field-help">按周计划执行的天数；选「每天」即一周 7 天都打算打卡。</p>
         </div>
 
         <!-- 预览 -->
@@ -383,7 +364,10 @@ async function submit() {
             <div class="preview__icon">{{ form.icon }}</div>
             <div>
               <div class="preview__name">{{ form.name || '目标名称' }}</div>
-              <div class="preview__desc">{{ form.dailyDescription || '每日事项' }} · {{ form.dailyDuration }} 分钟 / 天</div>
+              <div class="preview__desc">
+                {{ form.dailyDescription || '每日事项' }} · {{ formatMinutes(perDayMinutes) }} / 天
+                <template v-if="form.daysPerWeek < 7"> · 每周 {{ form.daysPerWeek }} 天</template>
+              </div>
             </div>
           </div>
         </div>
@@ -457,7 +441,7 @@ async function submit() {
 }
 .stepper__step--active .stepper__dot {
   background: var(--brand);
-  color: #fff;
+  color: var(--text-on-color);
   box-shadow: 0 0 0 4px var(--brand-soft);
 }
 .stepper__label {
@@ -612,44 +596,133 @@ async function submit() {
   line-height: 1.55;
 }
 
-/* phases */
-.phase-list { display: flex; flex-direction: column; gap: var(--space-3); margin-bottom: var(--space-3); }
-.phase-item {
+/* optional core need */
+.details-opt {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-4);
   background: var(--bg-soft);
-  border-color: transparent;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
 }
-.phase-item__head {
+.details-opt__summary {
+  cursor: pointer;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2) var(--space-3);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  font-weight: 500;
+  list-style: none;
+}
+.details-opt__summary::-webkit-details-marker { display: none; }
+.details-opt__title {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+.details-opt__chev {
+  font-size: 10px;
+  color: var(--text-tertiary);
+  transition: transform var(--duration-fast) var(--ease-out);
+}
+.details-opt[open] .details-opt__chev { transform: rotate(-180deg); }
+.details-opt__hint-inline {
+  flex: 1 1 100%;
+  font-weight: 400;
+  color: var(--text-tertiary);
+  font-size: var(--text-xs);
+  line-height: 1.5;
+}
+.details-opt__lead {
+  margin-top: var(--space-3);
+  margin-bottom: 0;
+}
+.details-opt__body { margin-top: var(--space-3); }
+
+.field-help {
+  margin-top: var(--space-2);
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+}
+.field-help--warn { color: var(--coral); }
+.form__inline {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
+  gap: var(--space-2);
 }
-.phase-item__name {
-  flex: 1;
-  background: transparent;
-  border-color: transparent;
-  font-size: var(--text-md);
-  font-weight: 600;
-  padding-left: 0;
-  height: 32px;
-}
-.phase-item__name:focus { background: var(--surface); border-color: var(--brand); padding-left: var(--space-3); }
-.phase-item__row {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: var(--space-3);
+.input--narrow { max-width: 140px; }
+.form__suffix { font-size: var(--text-sm); color: var(--text-secondary); }
+.form__dh {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
 }
 
-/* warn */
-.warn {
+.daily-target-intro {
+  margin-bottom: var(--space-3);
+}
+.daily-target-summary {
   display: flex;
   align-items: center;
-  gap: 6px;
-  margin-top: 6px;
+  justify-content: space-between;
+  gap: var(--space-4);
+  width: 100%;
+  padding: var(--space-4);
+  margin: 0;
+  margin-bottom: var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-soft);
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  transition:
+    border-color var(--duration-fast) var(--ease-out),
+    background var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-fast) var(--ease-out);
+}
+.daily-target-summary:hover {
+  border-color: var(--brand-border);
+  background: var(--brand-softer);
+}
+.daily-target-summary:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--brand-soft);
+}
+.daily-target-summary__text {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 8px;
+}
+.daily-target-summary__value {
+  font-size: var(--text-lg);
+  font-weight: 600;
+  color: var(--text-primary);
+  letter-spacing: 0.2px;
+}
+.daily-target-summary__unit {
   font-size: var(--text-sm);
-  color: var(--peach);
+  color: var(--text-secondary);
+}
+.daily-target-summary__tap-hint {
+  flex: 1 1 100%;
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+}
+.daily-target-summary__action {
+  flex-shrink: 0;
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--brand-active);
+}
+.daily-target-edit {
+  padding: var(--space-4);
+  margin-bottom: var(--space-2);
+  border-radius: var(--radius-md);
+  border: 1px dashed var(--border);
+  background: var(--surface);
 }
 
 /* checkbox */
@@ -756,7 +829,6 @@ async function submit() {
 
 @media (max-width: 768px) {
   .form__row { grid-template-columns: 1fr; }
-  .phase-item__row { grid-template-columns: 1fr; }
   .stepper__label { display: none; }
 }
 </style>
