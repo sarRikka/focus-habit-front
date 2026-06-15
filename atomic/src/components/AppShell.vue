@@ -96,7 +96,9 @@ const pageTitle = computed(() => (route.meta.title as string) ?? 'Atomic');
       <div class="shell__page">
         <RouterView v-slot="{ Component }">
           <Transition name="fade" mode="out-in">
-            <component :is="Component" />
+            <KeepAlive include="CheckinView">
+              <component :is="Component" />
+            </KeepAlive>
           </Transition>
         </RouterView>
       </div>

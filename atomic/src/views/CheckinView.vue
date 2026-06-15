@@ -1,19 +1,23 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
+import { computed, onActivated, onBeforeUnmount, onDeactivated, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import {
   Play, Pause, RotateCcw, CheckCircle2, ChevronUp, ChevronRight,
   Clock3, Sparkles, History, Info,
 } from 'lucide-vue-next';
 import { useAppStore } from '../stores/app';
-import { formatSeconds, lsGet, lsSet, todayStr, effectiveDailyTargetMinutes, minCheckinElapsedSeconds } from '../composables/utils';
+import { formatSeconds, lsGet, lsSet, effectiveDailyTargetMinutes } from '../composables/utils';
+import { clearCheckinTimer, loadCheckinTimer, saveCheckinTimer } from '../composables/checkinTimer';
 import ProgressRing from '../components/ProgressRing.vue';
 import type { Goal } from '../types';
+
+defineOptions({ name: 'CheckinView' });
 
 const route = useRoute();
 const store = useAppStore();
 
-const selectedId = ref<string>(String(route.params.id ?? ''));
+const SELECTED_GOAL_KEY = 'atomic-checkin-selected-goal';
+const selectedId = ref<string>(String(route.params.id ?? lsGet<string>(SELECTED_GOAL_KEY, '')));
 
 // 路由切换时同步 selectedId，避免目标显示与 URL 不一致
 watch(() => route.params.id, (id) => {
@@ -76,7 +80,6 @@ watch(goal, (g) => {
 const effectiveDuration = computed(() =>
   effectiveDailyTargetMinutes(goal.value?.dailyHabit.duration ?? 30, store.activeScene),
 );
-const minCompleteSeconds = computed(() => minCheckinElapsedSeconds(effectiveDuration.value));
 
 const targetSec = computed(() => effectiveDuration.value * 60);
 const elapsed = ref(0);
@@ -84,38 +87,9 @@ const elapsed = ref(0);
 const accumulated = ref(0);
 const runningSince = ref<number | null>(null);
 const timer = ref<ReturnType<typeof setInterval> | null>(null);
-const running = ref(false);
 
-const TIMER_STORAGE_PREFIX = 'atomic-checkin-timer';
-
-interface PersistedTimer {
-  date: string;
-  accumulated: number;
-  running: boolean;
-  runningSince: number | null;
-}
-
-function timerKey(goalId: string) {
-  return `${TIMER_STORAGE_PREFIX}:${goalId}`;
-}
-
-function loadPersisted(goalId: string): PersistedTimer | null {
-  const s = lsGet<PersistedTimer | null>(timerKey(goalId), null);
-  if (!s || s.date !== todayStr()) return null;
-  return s;
-}
-
-function savePersisted(goalId: string, state: Omit<PersistedTimer, 'date'>) {
-  lsSet(timerKey(goalId), { date: todayStr(), ...state });
-}
-
-function clearPersisted(goalId: string) {
-  try {
-    localStorage.removeItem(timerKey(goalId));
-  } catch {
-    /* ignore */
-  }
-}
+/** 是否正在计时（仅手动暂停会清除 runningSince） */
+const isCounting = computed(() => runningSince.value !== null);
 
 function syncElapsedFromClock() {
   if (runningSince.value) {
@@ -125,40 +99,48 @@ function syncElapsedFromClock() {
   }
 }
 
-function persistTimer() {
-  const id = goal.value?.id;
+function persistTimer(goalId?: string) {
+  const id = goalId ?? goal.value?.id;
   if (!id) return;
-  savePersisted(id, {
+  syncElapsedFromClock();
+  saveCheckinTimer(id, {
     accumulated: accumulated.value,
-    running: running.value,
+    running: runningSince.value !== null,
     runningSince: runningSince.value,
   });
 }
 
-function stopInterval() {
+function clearTick() {
   if (timer.value) clearInterval(timer.value);
   timer.value = null;
-  running.value = false;
+}
+
+function startTick() {
+  clearTick();
+  timer.value = setInterval(() => {
+    syncElapsedFromClock();
+    persistTimer();
+  }, 1000);
 }
 
 function restoreTimer(goalId: string) {
-  stopInterval();
-  runningSince.value = null;
-  const s = loadPersisted(goalId);
+  clearTick();
+  const s = loadCheckinTimer(goalId);
   if (!s) {
     elapsed.value = 0;
     accumulated.value = 0;
+    runningSince.value = null;
     return;
   }
   accumulated.value = Math.max(0, s.accumulated);
   if (s.running && s.runningSince) {
+    const wallDelta = Math.floor((Date.now() - s.runningSince) / 1000);
+    if (accumulated.value > wallDelta + 2) {
+      accumulated.value = Math.max(0, accumulated.value - wallDelta);
+    }
     runningSince.value = s.runningSince;
     syncElapsedFromClock();
-    running.value = true;
-    timer.value = setInterval(() => {
-      syncElapsedFromClock();
-      persistTimer();
-    }, 1000);
+    startTick();
   } else {
     runningSince.value = null;
     elapsed.value = accumulated.value;
@@ -178,22 +160,19 @@ const remainingDisplay = computed(() => {
 const isPaused = computed(() => store.activeScene?.mode === 'pause');
 
 function start() {
-  if (running.value || isPaused.value) return;
+  if (isCounting.value || isPaused.value) return;
   accumulated.value = elapsed.value;
   runningSince.value = Date.now();
-  running.value = true;
-  timer.value = setInterval(() => {
-    syncElapsedFromClock();
-    persistTimer();
-  }, 1000);
+  startTick();
   persistTimer();
 }
 
 function pause() {
+  if (!isCounting.value) return;
   syncElapsedFromClock();
   accumulated.value = elapsed.value;
   runningSince.value = null;
-  stopInterval();
+  clearTick();
   persistTimer();
 }
 
@@ -201,30 +180,22 @@ function reset() {
   pause();
   elapsed.value = 0;
   accumulated.value = 0;
-  if (goal.value) clearPersisted(goal.value.id);
+  if (goal.value) clearCheckinTimer(goal.value.id);
 }
 
 async function complete() {
   if (!goal.value) return;
   if (isPaused.value) return;
   syncElapsedFromClock();
-  if (elapsed.value < minCompleteSeconds.value) {
-    store.showToast({
-      type: 'warning',
-      title: '时长未到一半',
-      desc: `请至少累计 ${formatSeconds(minCompleteSeconds.value)}（目标 ${effectiveDuration.value} 分钟的一半），再完成打卡`,
-    });
-    return;
-  }
   pause();
-  const minutes = Math.max(1, Math.round(elapsed.value / 60));
+  const minutes = elapsed.value <= 0 ? 1 : Math.max(1, Math.round(elapsed.value / 60));
   const goalId = goal.value.id;
   try {
     await store.checkin(goalId, { duration: minutes, status: 'done' });
     triggerPoolDrop();
     elapsed.value = 0;
     accumulated.value = 0;
-    clearPersisted(goalId);
+    clearCheckinTimer(goalId);
   } catch {
     /* 远程失败：保留已计时长，可重试 */
   }
@@ -236,13 +207,24 @@ const recent = computed(() => {
   return entries;
 });
 
+watch(selectedId, (id) => {
+  if (id) lsSet(SELECTED_GOAL_KEY, id);
+});
+
+function selectGoal(id: string) {
+  if (selectedId.value === id) return;
+  persistTimer();
+  selectedId.value = id;
+}
+
 watch(
   () => goal.value?.id,
   (id, prevId) => {
-    if (prevId && prevId !== id) persistTimer();
-    if (id) restoreTimer(id);
-    else {
-      stopInterval();
+    if (prevId && prevId !== id) persistTimer(prevId);
+    if (id) {
+      restoreTimer(id);
+    } else if (prevId) {
+      clearTick();
       elapsed.value = 0;
       accumulated.value = 0;
       runningSince.value = null;
@@ -251,18 +233,50 @@ watch(
   { immediate: true },
 );
 
+function syncTimerOnEnter() {
+  const id = goal.value?.id ?? selectedId.value;
+  if (!id) return;
+  if (isCounting.value) {
+    syncElapsedFromClock();
+    if (!timer.value) startTick();
+    return;
+  }
+  restoreTimer(id);
+}
+
 function onVisibilityChange() {
+  if (!isCounting.value) return;
+  syncElapsedFromClock();
   persistTimer();
+}
+
+function flushTimerOnLeave() {
+  if (isCounting.value) syncElapsedFromClock();
+  persistTimer();
+  clearTick();
 }
 
 onMounted(() => {
   document.addEventListener('visibilitychange', onVisibilityChange);
+  syncTimerOnEnter();
+});
+
+onActivated(() => {
+  document.addEventListener('visibilitychange', onVisibilityChange);
+  syncTimerOnEnter();
+});
+
+onDeactivated(() => {
+  document.removeEventListener('visibilitychange', onVisibilityChange);
+  flushTimerOnLeave();
+});
+
+onBeforeUnmount(() => {
+  flushTimerOnLeave();
 });
 
 onUnmounted(() => {
   document.removeEventListener('visibilitychange', onVisibilityChange);
-  persistTimer();
-  stopInterval();
 });
 
 function statusLabel(s: string) {
@@ -294,7 +308,7 @@ function statusLabel(s: string) {
           :key="g.id"
           class="goal-list__item"
           :class="{ 'goal-list__item--active': goal && g.id === goal.id }"
-          @click="selectedId = g.id; reset()"
+          @click="selectGoal(g.id)"
         >
           <div class="goal-list__icon" :class="`goal-list__icon--${g.color}`">{{ g.icon }}</div>
           <div class="goal-list__main">
@@ -375,7 +389,7 @@ function statusLabel(s: string) {
           </div>
 
           <div class="timer__actions">
-            <button v-if="!running" class="btn btn--primary btn--lg" :disabled="isPaused" @click="start">
+            <button v-if="!isCounting" class="btn btn--primary btn--lg" :disabled="isPaused" @click="start">
               <Play :size="18" :stroke-width="2.4" /> {{ elapsed > 0 ? '继续' : '开始打卡' }}
             </button>
             <button v-else class="btn btn--secondary btn--lg" @click="pause">
@@ -384,15 +398,10 @@ function statusLabel(s: string) {
             <button class="btn btn--outline btn--lg" :disabled="elapsed === 0" @click="reset">
               <RotateCcw :size="16" :stroke-width="2" /> 重置
             </button>
-            <button class="btn btn--primary btn--lg" :disabled="elapsed < minCompleteSeconds || isPaused" @click="complete">
+            <button class="btn btn--primary btn--lg" :disabled="isPaused" @click="complete">
               <CheckCircle2 :size="18" :stroke-width="2.4" /> 完成打卡
             </button>
           </div>
-
-          <p v-if="goal && !isPaused && !store.todayChecked(goal)" class="timer__half-rule">
-            完成打卡需累计至少 <span class="num">{{ formatSeconds(minCompleteSeconds) }}</span>
-            （当日目标 {{ effectiveDuration }} 分钟的一半）
-          </p>
         </div>
 
         <!-- 目标达成池：紧接在打卡计时下方 -->

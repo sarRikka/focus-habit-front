@@ -10,7 +10,6 @@ import {
 import {
   lsGet, lsSet, todayStr, uid, addDays, diffDays, encouragements, pickRandom, clampProgressDeduction,
   normalizePhoneE164, clamp,
-  effectiveDailyTargetMinutes, minCheckinRecordedMinutes,
 } from '../composables/utils';
 import { isRemote, ApiError, setTokens } from '../api/http';
 import {
@@ -267,17 +266,6 @@ export const useAppStore = defineStore('app', () => {
     const status = opts.status ?? 'done';
     const previous = g.checkins[date];
     const wasChecked = !!previous && (previous.status === 'done' || previous.status === 'late');
-
-    const effTargetMin = effectiveDailyTargetMinutes(g.dailyHabit.duration, activeScene.value);
-    const minRecordedMin = minCheckinRecordedMinutes(effTargetMin);
-    if ((status === 'done' || status === 'late') && opts.duration < minRecordedMin) {
-      showToast({
-        type: 'warning',
-        title: '时长未到一半',
-        desc: `完成打卡至少需要 ${minRecordedMin} 分钟（当日目标的一半）`,
-      });
-      return;
-    }
 
     if (isRemote) {
       try {
